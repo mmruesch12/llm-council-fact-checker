@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import './ModelSelector.css';
 
+const MAX_COUNCIL_MODELS = 4;
+
 export default function ModelSelector({
   availableModels,
   councilModels,
@@ -19,14 +21,24 @@ export default function ModelSelector({
     return acc;
   }, {});
 
-  const toggleModel = (modelId) => {
-    if (councilModels.includes(modelId)) {
-      // Don't allow removing if it's the last model
-      if (councilModels.length > 1) {
-        onCouncilChange(councilModels.filter((id) => id !== modelId));
-      }
-    } else {
+  // Count occurrences of each model
+  const getModelCount = (modelId) => {
+    return councilModels.filter((id) => id === modelId).length;
+  };
+
+  // Add a model (allows duplicates up to the limit)
+  const addModel = (modelId) => {
+    if (councilModels.length < MAX_COUNCIL_MODELS) {
       onCouncilChange([...councilModels, modelId]);
+    }
+  };
+
+  // Remove a model by index
+  const removeModelAtIndex = (index) => {
+    if (councilModels.length > 1) {
+      const newModels = [...councilModels];
+      newModels.splice(index, 1);
+      onCouncilChange(newModels);
     }
   };
 
@@ -34,6 +46,8 @@ export default function ModelSelector({
     const model = availableModels.find((m) => m.id === modelId);
     return model ? model.name : modelId;
   };
+
+  const isAtLimit = councilModels.length >= MAX_COUNCIL_MODELS;
 
   return (
     <div className="model-selector">
@@ -43,7 +57,7 @@ export default function ModelSelector({
       >
         <span className="toggle-icon">{isExpanded ? '−' : '+'}</span>
         <span className="toggle-label">Model Configuration</span>
-        <span className="model-count">{councilModels.length} models</span>
+        <span className="model-count">{councilModels.length}/{MAX_COUNCIL_MODELS} models</span>
       </button>
 
       {isExpanded && (
@@ -66,15 +80,15 @@ export default function ModelSelector({
 
           {/* Council Models Selection */}
           <div className="council-section">
-            <label className="section-label">Council Models</label>
+            <label className="section-label">Council Models (click to add, max {MAX_COUNCIL_MODELS})</label>
             <div className="selected-models">
-              {councilModels.map((modelId) => (
-                <span key={modelId} className="selected-model-tag">
+              {councilModels.map((modelId, index) => (
+                <span key={`${modelId}-${index}`} className="selected-model-tag">
                   {getModelName(modelId)}
                   {councilModels.length > 1 && (
                     <button
                       className="remove-model"
-                      onClick={() => toggleModel(modelId)}
+                      onClick={() => removeModelAtIndex(index)}
                     >
                       ×
                     </button>
@@ -88,17 +102,21 @@ export default function ModelSelector({
                 <div key={provider} className="model-group">
                   <div className="provider-name">{provider}</div>
                   <div className="provider-models">
-                    {models.map((model) => (
-                      <button
-                        key={model.id}
-                        className={`model-option ${
-                          councilModels.includes(model.id) ? 'selected' : ''
-                        }`}
-                        onClick={() => toggleModel(model.id)}
-                      >
-                        {model.name}
-                      </button>
-                    ))}
+                    {models.map((model) => {
+                      const count = getModelCount(model.id);
+                      return (
+                        <button
+                          key={model.id}
+                          className={`model-option ${count > 0 ? 'selected' : ''} ${isAtLimit ? 'disabled' : ''}`}
+                          onClick={() => addModel(model.id)}
+                          disabled={isAtLimit}
+                          title={isAtLimit ? `Maximum ${MAX_COUNCIL_MODELS} models reached` : `Add ${model.name} to council`}
+                        >
+                          {model.name}
+                          {count > 0 && <span className="model-count-badge">{count}</span>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
