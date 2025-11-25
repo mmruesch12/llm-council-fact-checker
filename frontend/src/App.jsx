@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
+import ErrorCatalog from './components/ErrorCatalog';
 import { api } from './api';
 import './App.css';
 
@@ -9,6 +10,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentView, setCurrentView] = useState('chat'); // 'chat' or 'errors'
 
   // Model configuration state
   const [availableModels, setAvailableModels] = useState([]);
@@ -233,22 +235,29 @@ function App() {
 
   return (
     <div className="app">
-      <Sidebar
-        conversations={conversations}
-        currentConversationId={currentConversationId}
-        onSelectConversation={handleSelectConversation}
-        onNewConversation={handleNewConversation}
-        availableModels={availableModels}
-        councilModels={councilModels}
-        chairmanModel={chairmanModel}
-        onCouncilChange={setCouncilModels}
-        onChairmanChange={setChairmanModel}
-      />
-      <ChatInterface
-        conversation={currentConversation}
-        onSendMessage={handleSendMessage}
-        isLoading={isLoading}
-      />
+      {currentView === 'chat' ? (
+        <>
+          <Sidebar
+            conversations={conversations}
+            currentConversationId={currentConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+            availableModels={availableModels}
+            councilModels={councilModels}
+            chairmanModel={chairmanModel}
+            onCouncilChange={setCouncilModels}
+            onChairmanChange={setChairmanModel}
+            onNavigateToErrors={() => setCurrentView('errors')}
+          />
+          <ChatInterface
+            conversation={currentConversation}
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+          />
+        </>
+      ) : (
+        <ErrorCatalog onBack={() => setCurrentView('chat')} />
+      )}
     </div>
   );
 }

@@ -220,3 +220,42 @@
   border-radius: var(--radius-full);
   opacity: 0.5;
 }
+
+/* ========================================
+   Sidebar Footer
+   ======================================== */
+
+.sidebar-footer {
+  padding: var(--space-md);
+  border-top: 1px solid var(--glass-border);
+  position: relative;
+  z-index: 1;
+}
+
+.error-catalog-btn {
+  width: 100%;
+  padding: 10px var(--space-md);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.error-catalog-btn:hover {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
+}
+
+.error-catalog-btn:active {
+  transform: scale(0.98);
+}

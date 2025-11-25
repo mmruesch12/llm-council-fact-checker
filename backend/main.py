@@ -255,6 +255,22 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     )
 
 
+@app.get("/api/errors")
+async def get_errors():
+    """Get all cataloged errors with summary statistics."""
+    return {
+        "errors": error_catalog.get_all_errors(),
+        "summary": error_catalog.get_error_summary()
+    }
+
+
+@app.delete("/api/errors")
+async def clear_errors():
+    """Clear all cataloged errors."""
+    error_catalog.save_catalog({"errors": []})
+    return {"status": "ok", "message": "Error catalog cleared"}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)

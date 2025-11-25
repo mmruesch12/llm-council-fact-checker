@@ -78,6 +78,30 @@ export const api = {
   },
 
   /**
+   * Get all cataloged errors with summary statistics.
+   */
+  async getErrors() {
+    const response = await fetch(`${API_BASE}/api/errors`);
+    if (!response.ok) {
+      throw new Error('Failed to get errors');
+    }
+    return response.json();
+  },
+
+  /**
+   * Clear all cataloged errors.
+   */
+  async clearErrors() {
+    const response = await fetch(`${API_BASE}/api/errors`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to clear errors');
+    }
+    return response.json();
+  },
+
+  /**
    * Send a message and receive streaming updates.
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
