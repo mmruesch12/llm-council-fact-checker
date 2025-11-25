@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react';
 import './Sidebar.css';
+import ModelSelector from './ModelSelector';
 
 export default function Sidebar({
   conversations,
   currentConversationId,
   onSelectConversation,
   onNewConversation,
+  availableModels,
+  councilModels,
+  chairmanModel,
+  onCouncilChange,
+  onChairmanChange,
 }) {
   return (
     <div className="sidebar">
@@ -38,6 +43,16 @@ export default function Sidebar({
           ))
         )}
       </div>
+
+      {availableModels.length > 0 && (
+        <ModelSelector
+          availableModels={availableModels}
+          councilModels={councilModels}
+          chairmanModel={chairmanModel}
+          onCouncilChange={onCouncilChange}
+          onChairmanChange={onChairmanChange}
+        />
+      )}
     </div>
   );
 }

@@ -5,20 +5,25 @@ from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 
-async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
+async def stage1_collect_responses(
+    user_query: str,
+    council_models: List[str] = None
+) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council models.
 
     Args:
         user_query: The user's question
+        council_models: Optional list of model IDs to use (defaults to COUNCIL_MODELS)
 
     Returns:
         List of dicts with 'model' and 'response' keys
     """
+    models = council_models if council_models else COUNCIL_MODELS
     messages = [{"role": "user", "content": user_query}]
 
     # Query all models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    responses = await query_models_parallel(models, messages)
 
     # Format results
     stage1_results = []
@@ -34,7 +39,8 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
 
 async def stage2_fact_check(
     user_query: str,
-    stage1_results: List[Dict[str, Any]]
+    stage1_results: List[Dict[str, Any]],
+    council_models: List[str] = None
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
     Stage 2: Each model fact-checks the other models' anonymized responses.
@@ -42,10 +48,12 @@ async def stage2_fact_check(
     Args:
         user_query: The original user query
         stage1_results: Results from Stage 1
+        council_models: Optional list of model IDs to use (defaults to COUNCIL_MODELS)
 
     Returns:
         Tuple of (fact_check list, label_to_model mapping)
     """
+    models = council_models if council_models else COUNCIL_MODELS
     # Create anonymized labels for responses (Response A, Response B, etc.)
     labels = [chr(65 + i) for i in range(len(stage1_results))]  # A, B, C, ...
 
@@ -97,7 +105,7 @@ Now provide your detailed fact-check analysis:"""
     messages = [{"role": "user", "content": fact_check_prompt}]
 
     # Get fact-checks from all council models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    responses = await query_models_parallel(models, messages)
 
     # Format results
     fact_check_results = []
@@ -163,7 +171,8 @@ async def stage3_collect_rankings(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
     fact_check_results: List[Dict[str, Any]],
-    label_to_model: Dict[str, str]
+    label_to_model: Dict[str, str],
+    council_models: List[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Stage 3: Each model ranks the anonymized responses (after seeing fact-checks).
@@ -173,10 +182,12 @@ async def stage3_collect_rankings(
         stage1_results: Results from Stage 1
         fact_check_results: Results from Stage 2 (fact-checking)
         label_to_model: Mapping from labels to model names
+        council_models: Optional list of model IDs to use (defaults to COUNCIL_MODELS)
 
     Returns:
         List of rankings from each model
     """
+    models = council_models if council_models else COUNCIL_MODELS
     # Get labels from label_to_model
     labels = [label.replace("Response ", "") for label in label_to_model.keys()]
     labels.sort()
@@ -235,7 +246,7 @@ Now provide your evaluation and ranking:"""
     messages = [{"role": "user", "content": ranking_prompt}]
 
     # Get rankings from all council models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    responses = await query_models_parallel(models, messages)
 
     # Format results
     stage3_results = []
@@ -257,7 +268,8 @@ async def stage4_synthesize_final(
     stage1_results: List[Dict[str, Any]],
     fact_check_results: List[Dict[str, Any]],
     stage3_results: List[Dict[str, Any]],
-    label_to_model: Dict[str, str]
+    label_to_model: Dict[str, str],
+    chairman_model: str = None
 ) -> Dict[str, Any]:
     """
     Stage 4: Chairman synthesizes final response with fact-check validation.
@@ -268,10 +280,12 @@ async def stage4_synthesize_final(
         fact_check_results: Fact-checks from Stage 2
         stage3_results: Rankings from Stage 3
         label_to_model: Mapping from labels to model names
+        chairman_model: Optional chairman model ID (defaults to CHAIRMAN_MODEL)
 
     Returns:
         Dict with 'model', 'response', and 'fact_check_synthesis' keys
     """
+    chairman = chairman_model if chairman_model else CHAIRMAN_MODEL
     # Build comprehensive context for chairman
     stage1_text = "\n\n".join([
         f"Model: {result['model']}\nResponse: {result['response']}"
@@ -335,17 +349,17 @@ Now provide your Chairman synthesis:"""
     messages = [{"role": "user", "content": chairman_prompt}]
 
     # Query the chairman model
-    response = await query_model(CHAIRMAN_MODEL, messages)
+    response = await query_model(chairman, messages)
 
     if response is None:
         # Fallback if chairman fails
         return {
-            "model": CHAIRMAN_MODEL,
+            "model": chairman,
             "response": "Error: Unable to generate final synthesis."
         }
 
     return {
-        "model": CHAIRMAN_MODEL,
+        "model": chairman,
         "response": response.get('content', '')
     }
 
@@ -549,18 +563,24 @@ def calculate_aggregate_fact_checks(
     return aggregate
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, List, Dict, Dict]:
+async def run_full_council(
+    user_query: str,
+    council_models: List[str] = None,
+    chairman_model: str = None
+) -> Tuple[List, List, List, Dict, Dict]:
     """
     Run the complete 4-stage council process.
 
     Args:
         user_query: The user's question
+        council_models: Optional list of model IDs for the council (defaults to COUNCIL_MODELS)
+        chairman_model: Optional chairman model ID (defaults to CHAIRMAN_MODEL)
 
     Returns:
         Tuple of (stage1_results, fact_check_results, stage3_results, stage4_result, metadata)
     """
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query)
+    stage1_results = await stage1_collect_responses(user_query, council_models)
 
     # If no models responded successfully, return error
     if not stage1_results:
@@ -570,14 +590,14 @@ async def run_full_council(user_query: str) -> Tuple[List, List, List, Dict, Dic
         }, {}
 
     # Stage 2: Fact-check each other's responses
-    fact_check_results, label_to_model = await stage2_fact_check(user_query, stage1_results)
+    fact_check_results, label_to_model = await stage2_fact_check(user_query, stage1_results, council_models)
 
     # Calculate aggregate fact-check ratings
     aggregate_fact_checks = calculate_aggregate_fact_checks(fact_check_results, label_to_model)
 
     # Stage 3: Collect rankings (informed by fact-checks)
     stage3_results = await stage3_collect_rankings(
-        user_query, stage1_results, fact_check_results, label_to_model
+        user_query, stage1_results, fact_check_results, label_to_model, council_models
     )
 
     # Calculate aggregate rankings
@@ -589,7 +609,8 @@ async def run_full_council(user_query: str) -> Tuple[List, List, List, Dict, Dic
         stage1_results,
         fact_check_results,
         stage3_results,
-        label_to_model
+        label_to_model,
+        chairman_model
     )
 
     # Prepare metadata

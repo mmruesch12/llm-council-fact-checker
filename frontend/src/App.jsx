@@ -10,10 +10,27 @@ function App() {
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load conversations on mount
+  // Model configuration state
+  const [availableModels, setAvailableModels] = useState([]);
+  const [councilModels, setCouncilModels] = useState([]);
+  const [chairmanModel, setChairmanModel] = useState('');
+
+  // Load conversations and models on mount
   useEffect(() => {
     loadConversations();
+    loadModels();
   }, []);
+
+  const loadModels = async () => {
+    try {
+      const data = await api.getModels();
+      setAvailableModels(data.available_models);
+      setCouncilModels(data.default_council);
+      setChairmanModel(data.default_chairman);
+    } catch (error) {
+      console.error('Failed to load models:', error);
+    }
+  };
 
   // Load conversation details when selected
   useEffect(() => {
@@ -92,6 +109,10 @@ function App() {
       }));
 
       // Send message with streaming
+      const modelConfig = {
+        councilModels: councilModels,
+        chairmanModel: chairmanModel,
+      };
       await api.sendMessageStream(currentConversationId, content, (eventType, event) => {
         switch (eventType) {
           case 'stage1_start':
@@ -198,7 +219,7 @@ function App() {
           default:
             console.log('Unknown event type:', eventType);
         }
-      });
+      }, modelConfig);
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove optimistic messages on error
@@ -217,6 +238,11 @@ function App() {
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        availableModels={availableModels}
+        councilModels={councilModels}
+        chairmanModel={chairmanModel}
+        onCouncilChange={setCouncilModels}
+        onChairmanChange={setChairmanModel}
       />
       <ChatInterface
         conversation={currentConversation}

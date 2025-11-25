@@ -1,0 +1,221 @@
+/* ========================================
+   Model Selector - Glassmorphism Design
+   ======================================== */
+
+.model-selector {
+  padding: var(--space-md);
+  border-top: 1px solid var(--glass-border);
+  position: relative;
+  z-index: 1;
+}
+
+.model-selector-toggle {
+  width: 100%;
+  padding: 10px var(--space-md);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.model-selector-toggle:hover {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.1);
+}
+
+.model-selector-toggle.expanded {
+  border-color: var(--accent-purple);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.toggle-icon {
+  font-size: 16px;
+  font-weight: 300;
+  opacity: 0.8;
+  width: 16px;
+  text-align: center;
+}
+
+.toggle-label {
+  flex: 1;
+  text-align: left;
+}
+
+.model-count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--bg-primary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.model-selector-content {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: var(--space-md);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.section-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-sm);
+}
+
+/* Chairman Section */
+.chairman-section {
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.chairman-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chairman-select:hover {
+  border-color: var(--accent-cyan);
+}
+
+.chairman-select:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px var(--accent-cyan-glow);
+}
+
+.chairman-select option {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Council Section */
+.council-section {
+  margin-bottom: 0;
+}
+
+.selected-models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+  min-height: 28px;
+}
+
+.selected-model-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--accent-blue-glow);
+  border: 1px solid var(--accent-blue);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--accent-blue);
+  font-weight: 500;
+}
+
+.remove-model {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.remove-model:hover {
+  opacity: 1;
+}
+
+/* Model Groups */
+.model-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.model-group {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+}
+
+.provider-name {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-xs);
+  padding-left: 4px;
+}
+
+.provider-models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.model-option {
+  padding: 4px 8px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.model-option:hover {
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
+}
+
+.model-option.selected {
+  background: var(--accent-blue-glow);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.model-option.selected:hover {
+  background: rgba(91, 141, 239, 0.2);
+}
