@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
-import Stage2 from './Stage2';
+import FactCheck from './FactCheck';
 import Stage3 from './Stage3';
+import Stage4 from './Stage4';
 import './ChatInterface.css';
 
 export default function ChatInterface({
@@ -72,7 +73,7 @@ export default function ChatInterface({
                 <div className="assistant-message">
                   <div className="message-label">LLM Council</div>
 
-                  {/* Stage 1 */}
+                  {/* Stage 1: Individual Responses */}
                   {msg.loading?.stage1 && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
@@ -81,29 +82,44 @@ export default function ChatInterface({
                   )}
                   {msg.stage1 && <Stage1 responses={msg.stage1} />}
 
-                  {/* Stage 2 */}
-                  {msg.loading?.stage2 && (
+                  {/* Stage 2: Fact-Checking */}
+                  {msg.loading?.fact_check && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
-                      <span>Running Stage 2: Peer rankings...</span>
+                      <span>Running Stage 2: Fact-checking each other's responses...</span>
                     </div>
                   )}
-                  {msg.stage2 && (
-                    <Stage2
-                      rankings={msg.stage2}
+                  {msg.fact_check && (
+                    <FactCheck
+                      factChecks={msg.fact_check}
+                      labelToModel={msg.metadata?.label_to_model}
+                      aggregateFactChecks={msg.metadata?.aggregate_fact_checks}
+                    />
+                  )}
+
+                  {/* Stage 3: Peer Rankings (informed by fact-checks) */}
+                  {msg.loading?.stage3 && (
+                    <div className="stage-loading">
+                      <div className="spinner"></div>
+                      <span>Running Stage 3: Peer rankings (informed by fact-checks)...</span>
+                    </div>
+                  )}
+                  {msg.stage3 && (
+                    <Stage3
+                      rankings={msg.stage3}
                       labelToModel={msg.metadata?.label_to_model}
                       aggregateRankings={msg.metadata?.aggregate_rankings}
                     />
                   )}
 
-                  {/* Stage 3 */}
-                  {msg.loading?.stage3 && (
+                  {/* Stage 4: Final Synthesis with Fact-Check Validation */}
+                  {msg.loading?.stage4 && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
-                      <span>Running Stage 3: Final synthesis...</span>
+                      <span>Running Stage 4: Final synthesis with fact-check validation...</span>
                     </div>
                   )}
-                  {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
+                  {msg.stage4 && <Stage4 finalResponse={msg.stage4} />}
                 </div>
               )}
             </div>

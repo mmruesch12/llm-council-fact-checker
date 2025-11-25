@@ -4,7 +4,17 @@ This file contains technical details, architectural decisions, and important imp
 
 ## Project Overview
 
-LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively answer user questions. The key innovation is anonymized peer review in Stage 2, preventing models from playing favorites.
+LLM Council is a **4-stage deliberation system** where multiple LLMs collaboratively answer user questions. The key innovations are:
+1. **Anonymized peer review** - models can't play favorites
+2. **Fact-checking stage** - models verify each other's claims before ranking
+3. **Chairman validation** - final synthesis includes fact-check analysis and validation
+
+## The 4-Stage Process
+
+1. **Stage 1: Individual Responses** - All council models answer the user's question independently
+2. **Stage 2: Fact-Checking** - Each model fact-checks all other responses (anonymized)
+3. **Stage 3: Peer Rankings** - Models rank responses after seeing fact-check analyses
+4. **Stage 4: Chairman Synthesis** - Chairman synthesizes final answer with fact-check validation
 
 ## Architecture
 
@@ -24,72 +34,116 @@ LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively
 
 **`council.py`** - The Core Logic
 - `stage1_collect_responses()`: Parallel queries to all council models
-- `stage2_collect_rankings()`:
+- `stage2_fact_check()`:
   - Anonymizes responses as "Response A, B, C, etc."
   - Creates `label_to_model` mapping for de-anonymization
-  - Prompts models to evaluate and rank (with strict format requirements)
-  - Returns tuple: (rankings_list, label_to_model_dict)
-  - Each ranking includes both raw text and `parsed_ranking` list
-- `stage3_synthesize_final()`: Chairman synthesizes from all responses + rankings
-- `parse_ranking_from_text()`: Extracts "FINAL RANKING:" section, handles both numbered lists and plain format
+  - Prompts models to fact-check each response with strict format requirements
+  - Returns tuple: (fact_check_list, label_to_model_dict)
+  - Each fact-check includes raw text and `parsed_summary` with ratings
+- `stage3_collect_rankings()`:
+  - Takes fact-check results as input context
+  - Models rank responses informed by fact-check analyses
+  - Returns rankings with `parsed_ranking` list
+- `stage4_synthesize_final()`: Chairman synthesizes with:
+  - Fact-check synthesis (what was confirmed accurate/inaccurate)
+  - Fact-checker validation (reviewing the fact-checkers themselves)
+  - Final comprehensive answer
+- `parse_ranking_from_text()`: Extracts "FINAL RANKING:" section
+- `parse_fact_check_from_text()`: Extracts "FACT CHECK SUMMARY:" section with ratings
 - `calculate_aggregate_rankings()`: Computes average rank position across all peer evaluations
+- `calculate_aggregate_fact_checks()`: Computes consensus accuracy ratings across all fact-checkers
 
 **`storage.py`**
 - JSON-based conversation storage in `data/conversations/`
 - Each conversation: `{id, created_at, messages[]}`
-- Assistant messages contain: `{role, stage1, stage2, stage3}`
-- Note: metadata (label_to_model, aggregate_rankings) is NOT persisted to storage, only returned via API
+- Assistant messages contain: `{role, stage1, fact_check, stage3, stage4}`
+- Note: metadata (label_to_model, aggregate_rankings, aggregate_fact_checks) is NOT persisted to storage, only returned via API
 
 **`main.py`**
 - FastAPI app with CORS enabled for localhost:5173 and localhost:3000
 - POST `/api/conversations/{id}/message` returns metadata in addition to stages
-- Metadata includes: label_to_model mapping and aggregate_rankings
+- Streaming endpoint sends events: `stage1_start/complete`, `fact_check_start/complete`, `stage3_start/complete`, `stage4_start/complete`
+- Metadata includes: label_to_model mapping, aggregate_rankings, and aggregate_fact_checks
 
 ### Frontend Structure (`frontend/src/`)
 
 **`App.jsx`**
 - Main orchestration: manages conversations list and current conversation
 - Handles message sending and metadata storage
+- Streaming event handlers for all 4 stages
 - Important: metadata is stored in the UI state for display but not persisted to backend JSON
 
 **`components/ChatInterface.jsx`**
 - Multiline textarea (3 rows, resizable)
 - Enter to send, Shift+Enter for new line
 - User messages wrapped in markdown-content class for padding
+- Renders Stage1, FactCheck, Stage3, Stage4 components
 
 **`components/Stage1.jsx`**
 - Tab view of individual model responses
 - ReactMarkdown rendering with markdown-content wrapper
 
-**`components/Stage2.jsx`**
-- **Critical Feature**: Tab view showing RAW evaluation text from each model
-- De-anonymization happens CLIENT-SIDE for display (models receive anonymous labels)
-- Shows "Extracted Ranking" below each evaluation so users can validate parsing
-- Aggregate rankings shown with average position and vote count
-- Explanatory text clarifies that boldface model names are for readability only
+**`components/FactCheck.jsx`** (NEW)
+- **Aggregate Accuracy Ratings**: Shows consensus ratings across all fact-checkers
+- Tab view showing raw fact-check analysis from each model
+- De-anonymization happens CLIENT-SIDE for display
+- Shows "Extracted Summary" with parsed ratings and most_reliable designation
+- Color-coded rating badges: ACCURATE (green) to INACCURATE (red)
 
 **`components/Stage3.jsx`**
+- Tab view showing ranking evaluations from each model
+- Informed by fact-check analyses
+- Shows "Extracted Ranking" below each evaluation
+- Aggregate rankings shown with average position and vote count
+
+**`components/Stage4.jsx`**
 - Final synthesized answer from chairman
+- Includes Fact-Check Synthesis, Fact-Checker Validation, and Final Council Answer
 - Green-tinted background (#f0fff0) to highlight conclusion
 
 **Styling (`*.css`)**
 - Light mode theme (not dark mode)
 - Primary color: #4a90e2 (blue)
+- Fact-check stage uses orange/amber theme (#ffa500, #ffd966)
 - Global markdown styling in `index.css` with `.markdown-content` class
 - 12px padding on all markdown content to prevent cluttered appearance
 
 ## Key Design Decisions
 
-### Stage 2 Prompt Format
-The Stage 2 prompt is very specific to ensure parseable output:
+### Stage 2 Fact-Check Prompt Format
+The fact-check prompt requires specific output:
 ```
-1. Evaluate each response individually first
-2. Provide "FINAL RANKING:" header
-3. Numbered list format: "1. Response C", "2. Response A", etc.
-4. No additional text after ranking section
+1. For each response, identify:
+   - Accurate Claims
+   - Inaccurate Claims (with explanations)
+   - Unverifiable Claims
+   - Missing Important Information
+
+2. End with "FACT CHECK SUMMARY:" section
+3. Rate each response: ACCURATE / MOSTLY ACCURATE / MIXED / MOSTLY INACCURATE / INACCURATE
+4. Designate "MOST RELIABLE: Response X"
 ```
 
-This strict format allows reliable parsing while still getting thoughtful evaluations.
+### Stage 3 Ranking Prompt Format
+The ranking prompt is informed by fact-checks:
+```
+1. Consider both quality and fact-check findings
+2. Provide "FINAL RANKING:" header
+3. Numbered list format: "1. Response C", "2. Response A", etc.
+```
+
+### Stage 4 Chairman Synthesis Format
+The chairman must provide structured output:
+```
+## Fact-Check Synthesis
+[Analysis of what was confirmed accurate/inaccurate across fact-checkers]
+
+## Fact-Checker Validation
+[Review of the fact-checkers themselves - any errors in their analyses]
+
+## Final Council Answer
+[Comprehensive, fact-checked answer]
+```
 
 ### De-anonymization Strategy
 - Models receive: "Response A", "Response B", etc.
@@ -105,7 +159,7 @@ This strict format allows reliable parsing while still getting thoughtful evalua
 
 ### UI/UX Transparency
 - All raw outputs are inspectable via tabs
-- Parsed rankings shown below raw text for validation
+- Parsed fact-check summaries and rankings shown below raw text for validation
 - Users can verify system's interpretation of model outputs
 - This builds trust and allows debugging of edge cases
 
@@ -130,16 +184,17 @@ Models are hardcoded in `backend/config.py`. Chairman can be same or different f
 1. **Module Import Errors**: Always run backend as `python -m backend.main` from project root, not from backend directory
 2. **CORS Issues**: Frontend must match allowed origins in `main.py` CORS middleware
 3. **Ranking Parse Failures**: If models don't follow format, fallback regex extracts any "Response X" patterns in order
-4. **Missing Metadata**: Metadata is ephemeral (not persisted), only available in API responses
+4. **Fact-Check Parse Failures**: If models don't follow format, ratings dict may be empty
+5. **Missing Metadata**: Metadata is ephemeral (not persisted), only available in API responses
 
 ## Future Enhancement Ideas
 
 - Configurable council/chairman via UI instead of config file
-- Streaming responses instead of batch loading
 - Export conversations to markdown/PDF
 - Model performance analytics over time
-- Custom ranking criteria (not just accuracy/insight)
+- Custom fact-checking criteria for different domains
 - Support for reasoning models (o1, etc.) with special handling
+- Web search integration for fact-checking
 
 ## Testing Notes
 
@@ -152,15 +207,19 @@ User Query
     ↓
 Stage 1: Parallel queries → [individual responses]
     ↓
-Stage 2: Anonymize → Parallel ranking queries → [evaluations + parsed rankings]
+Stage 2: Anonymize → Parallel fact-check queries → [fact_checks + parsed_summaries]
+    ↓
+Aggregate Fact-Check Calculation → [sorted by accuracy score]
+    ↓
+Stage 3: Parallel ranking queries (with fact-check context) → [rankings + parsed_rankings]
     ↓
 Aggregate Rankings Calculation → [sorted by avg position]
     ↓
-Stage 3: Chairman synthesis with full context
+Stage 4: Chairman synthesis with full context + fact-check validation
     ↓
-Return: {stage1, stage2, stage3, metadata}
+Return: {stage1, fact_check, stage3, stage4, metadata}
     ↓
-Frontend: Display with tabs + validation UI
+Frontend: Display with tabs + validation UI for each stage
 ```
 
 The entire flow is async/parallel where possible to minimize latency.

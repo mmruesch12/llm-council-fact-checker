@@ -32,19 +32,19 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     return stage1_results
 
 
-async def stage2_collect_rankings(
+async def stage2_fact_check(
     user_query: str,
     stage1_results: List[Dict[str, Any]]
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
-    Stage 2: Each model ranks the anonymized responses.
+    Stage 2: Each model fact-checks the other models' anonymized responses.
 
     Args:
         user_query: The original user query
         stage1_results: Results from Stage 1
 
     Returns:
-        Tuple of (rankings list, label_to_model mapping)
+        Tuple of (fact_check list, label_to_model mapping)
     """
     # Create anonymized labels for responses (Response A, Response B, etc.)
     labels = [chr(65 + i) for i in range(len(stage1_results))]  # A, B, C, ...
@@ -55,10 +55,142 @@ async def stage2_collect_rankings(
         for label, result in zip(labels, stage1_results)
     }
 
-    # Build the ranking prompt
+    # Build the fact-checking prompt
     responses_text = "\n\n".join([
         f"Response {label}:\n{result['response']}"
         for label, result in zip(labels, stage1_results)
+    ])
+
+    fact_check_prompt = f"""You are a fact-checker evaluating different AI responses to the following question:
+
+Question: {user_query}
+
+Here are the responses from different models (anonymized):
+
+{responses_text}
+
+Your task is to fact-check each response thoroughly:
+
+1. For EACH response, identify:
+   - **Accurate Claims**: List specific claims that are factually correct
+   - **Inaccurate Claims**: List specific claims that are factually incorrect or misleading, and explain why
+   - **Unverifiable Claims**: List claims that cannot be easily verified or are speculative
+   - **Missing Important Information**: Note any crucial information the response failed to include
+
+2. At the very end of your analysis, provide a summary section.
+
+IMPORTANT: Your summary MUST be formatted EXACTLY as follows:
+- Start with the line "FACT CHECK SUMMARY:" (all caps, with colon)
+- For each response, on a new line write: "Response X: [ACCURATE/MOSTLY ACCURATE/MIXED/MOSTLY INACCURATE/INACCURATE]"
+- After rating all responses, add a line: "MOST RELIABLE: Response X" (the single most factually reliable response)
+
+Example of the correct format for your summary:
+
+FACT CHECK SUMMARY:
+Response A: MOSTLY ACCURATE
+Response B: MIXED
+Response C: ACCURATE
+MOST RELIABLE: Response C
+
+Now provide your detailed fact-check analysis:"""
+
+    messages = [{"role": "user", "content": fact_check_prompt}]
+
+    # Get fact-checks from all council models in parallel
+    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+
+    # Format results
+    fact_check_results = []
+    for model, response in responses.items():
+        if response is not None:
+            full_text = response.get('content', '')
+            parsed = parse_fact_check_from_text(full_text)
+            fact_check_results.append({
+                "model": model,
+                "fact_check": full_text,
+                "parsed_summary": parsed
+            })
+
+    return fact_check_results, label_to_model
+
+
+def parse_fact_check_from_text(fact_check_text: str) -> Dict[str, Any]:
+    """
+    Parse the FACT CHECK SUMMARY section from the model's response.
+
+    Args:
+        fact_check_text: The full text response from the model
+
+    Returns:
+        Dict with ratings per response and most_reliable
+    """
+    import re
+
+    result = {
+        "ratings": {},
+        "most_reliable": None
+    }
+
+    # Look for "FACT CHECK SUMMARY:" section
+    if "FACT CHECK SUMMARY:" in fact_check_text:
+        # Extract everything after "FACT CHECK SUMMARY:"
+        parts = fact_check_text.split("FACT CHECK SUMMARY:")
+        if len(parts) >= 2:
+            summary_section = parts[1]
+
+            # Extract ratings (e.g., "Response A: MOSTLY ACCURATE")
+            rating_matches = re.findall(
+                r'Response ([A-Z]):\s*(ACCURATE|MOSTLY ACCURATE|MIXED|MOSTLY INACCURATE|INACCURATE)',
+                summary_section,
+                re.IGNORECASE
+            )
+            for label, rating in rating_matches:
+                result["ratings"][f"Response {label}"] = rating.upper()
+
+            # Extract most reliable
+            most_reliable_match = re.search(
+                r'MOST RELIABLE:\s*Response ([A-Z])',
+                summary_section,
+                re.IGNORECASE
+            )
+            if most_reliable_match:
+                result["most_reliable"] = f"Response {most_reliable_match.group(1)}"
+
+    return result
+
+
+async def stage3_collect_rankings(
+    user_query: str,
+    stage1_results: List[Dict[str, Any]],
+    fact_check_results: List[Dict[str, Any]],
+    label_to_model: Dict[str, str]
+) -> List[Dict[str, Any]]:
+    """
+    Stage 3: Each model ranks the anonymized responses (after seeing fact-checks).
+
+    Args:
+        user_query: The original user query
+        stage1_results: Results from Stage 1
+        fact_check_results: Results from Stage 2 (fact-checking)
+        label_to_model: Mapping from labels to model names
+
+    Returns:
+        List of rankings from each model
+    """
+    # Get labels from label_to_model
+    labels = [label.replace("Response ", "") for label in label_to_model.keys()]
+    labels.sort()
+
+    # Build the ranking prompt with fact-check context
+    responses_text = "\n\n".join([
+        f"Response {label}:\n{result['response']}"
+        for label, result in zip(labels, stage1_results)
+    ])
+
+    # Summarize fact-check findings
+    fact_check_summary = "\n\n".join([
+        f"Fact-checker {i+1}:\n{result['fact_check']}"
+        for i, result in enumerate(fact_check_results)
     ])
 
     ranking_prompt = f"""You are evaluating different responses to the following question:
@@ -69,9 +201,21 @@ Here are the responses from different models (anonymized):
 
 {responses_text}
 
+---
+
+Here are the fact-check analyses from peer reviewers:
+
+{fact_check_summary}
+
+---
+
 Your task:
-1. First, evaluate each response individually. For each response, explain what it does well and what it does poorly.
-2. Then, at the very end of your response, provide a final ranking.
+1. Consider both the quality of each response AND the fact-check findings.
+2. Evaluate each response individually, taking into account:
+   - Factual accuracy (as revealed by the fact-checks)
+   - Completeness and helpfulness
+   - Clarity and reasoning
+3. Then, at the very end of your response, provide a final ranking.
 
 IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
 - Start with the line "FINAL RANKING:" (all caps, with colon)
@@ -79,11 +223,7 @@ IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
 - Each line should be: number, period, space, then ONLY the response label (e.g., "1. Response A")
 - Do not add any other text or explanations in the ranking section
 
-Example of the correct format for your ENTIRE response:
-
-Response A provides good detail on X but misses Y...
-Response B is accurate but lacks depth on Z...
-Response C offers the most comprehensive answer...
+Example of the correct format:
 
 FINAL RANKING:
 1. Response C
@@ -98,35 +238,39 @@ Now provide your evaluation and ranking:"""
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
 
     # Format results
-    stage2_results = []
+    stage3_results = []
     for model, response in responses.items():
         if response is not None:
             full_text = response.get('content', '')
             parsed = parse_ranking_from_text(full_text)
-            stage2_results.append({
+            stage3_results.append({
                 "model": model,
                 "ranking": full_text,
                 "parsed_ranking": parsed
             })
 
-    return stage2_results, label_to_model
+    return stage3_results
 
 
-async def stage3_synthesize_final(
+async def stage4_synthesize_final(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
-    stage2_results: List[Dict[str, Any]]
+    fact_check_results: List[Dict[str, Any]],
+    stage3_results: List[Dict[str, Any]],
+    label_to_model: Dict[str, str]
 ) -> Dict[str, Any]:
     """
-    Stage 3: Chairman synthesizes final response.
+    Stage 4: Chairman synthesizes final response with fact-check validation.
 
     Args:
         user_query: The original user query
         stage1_results: Individual model responses from Stage 1
-        stage2_results: Rankings from Stage 2
+        fact_check_results: Fact-checks from Stage 2
+        stage3_results: Rankings from Stage 3
+        label_to_model: Mapping from labels to model names
 
     Returns:
-        Dict with 'model' and 'response' keys
+        Dict with 'model', 'response', and 'fact_check_synthesis' keys
     """
     # Build comprehensive context for chairman
     stage1_text = "\n\n".join([
@@ -134,27 +278,59 @@ async def stage3_synthesize_final(
         for result in stage1_results
     ])
 
-    stage2_text = "\n\n".join([
-        f"Model: {result['model']}\nRanking: {result['ranking']}"
-        for result in stage2_results
+    fact_check_text = "\n\n".join([
+        f"Fact-checker ({result['model']}):\n{result['fact_check']}"
+        for result in fact_check_results
     ])
 
-    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
+    stage3_text = "\n\n".join([
+        f"Model: {result['model']}\nRanking: {result['ranking']}"
+        for result in stage3_results
+    ])
+
+    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question. Then each model fact-checked each other's responses. Finally, each model ranked the responses taking the fact-checks into account.
 
 Original Question: {user_query}
 
-STAGE 1 - Individual Responses:
+=== STAGE 1 - Individual Responses ===
 {stage1_text}
 
-STAGE 2 - Peer Rankings:
-{stage2_text}
+=== STAGE 2 - Fact-Check Analyses ===
+{fact_check_text}
 
-Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
-- The individual responses and their insights
-- The peer rankings and what they reveal about response quality
-- Any patterns of agreement or disagreement
+=== STAGE 3 - Peer Rankings (Informed by Fact-Checks) ===
+{stage3_text}
 
-Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
+---
+
+Your task as Chairman is comprehensive. You must:
+
+1. **FACT-CHECK SYNTHESIS**: First, analyze all the fact-check reports. Identify:
+   - Claims that multiple fact-checkers agreed were ACCURATE
+   - Claims that multiple fact-checkers agreed were INACCURATE (these are confirmed errors)
+   - Claims where fact-checkers DISAGREED (these need your judgment)
+   - Any factual errors that were missed by some fact-checkers
+
+2. **FACT-CHECK VALIDATION**: Review the fact-checkers themselves. Did any fact-checker make errors in their fact-checking? Note any corrections needed.
+
+3. **FINAL ANSWER**: Synthesize all of this into a single, comprehensive, FACTUALLY ACCURATE answer to the user's question. Your answer should:
+   - Incorporate the best insights from all responses
+   - EXCLUDE or CORRECT any claims that were identified as inaccurate
+   - Note any areas of genuine uncertainty where fact-checkers disagreed
+   - Be clear about what is well-established fact vs. what is opinion or speculation
+
+Structure your response as follows:
+
+## Fact-Check Synthesis
+[Your analysis of the fact-checking results - what was confirmed accurate, what was confirmed inaccurate, and any disagreements]
+
+## Fact-Checker Validation
+[Any corrections to the fact-checkers themselves, or confirmation that their analyses were sound]
+
+## Final Council Answer
+[Your comprehensive, fact-checked answer to the user's question]
+
+Now provide your Chairman synthesis:"""
 
     messages = [{"role": "user", "content": chairman_prompt}]
 
@@ -293,43 +469,134 @@ Title:"""
     return title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
+def calculate_aggregate_fact_checks(
+    fact_check_results: List[Dict[str, Any]],
+    label_to_model: Dict[str, str]
+) -> List[Dict[str, Any]]:
     """
-    Run the complete 3-stage council process.
+    Calculate aggregate fact-check ratings across all fact-checkers.
+
+    Args:
+        fact_check_results: Fact-checks from each model
+        label_to_model: Mapping from anonymous labels to model names
+
+    Returns:
+        List of dicts with model name, consensus rating, and vote breakdown
+    """
+    from collections import defaultdict
+
+    # Rating scores for averaging (higher is better)
+    rating_scores = {
+        "ACCURATE": 5,
+        "MOSTLY ACCURATE": 4,
+        "MIXED": 3,
+        "MOSTLY INACCURATE": 2,
+        "INACCURATE": 1
+    }
+
+    # Track ratings and most_reliable votes for each model
+    model_ratings = defaultdict(list)
+    most_reliable_votes = defaultdict(int)
+
+    for fact_check in fact_check_results:
+        parsed = fact_check.get('parsed_summary', {})
+        ratings = parsed.get('ratings', {})
+        most_reliable = parsed.get('most_reliable')
+
+        # Collect ratings for each response
+        for label, rating in ratings.items():
+            if label in label_to_model:
+                model_name = label_to_model[label]
+                model_ratings[model_name].append(rating)
+
+        # Count most_reliable votes
+        if most_reliable and most_reliable in label_to_model:
+            model_name = label_to_model[most_reliable]
+            most_reliable_votes[model_name] += 1
+
+    # Calculate aggregate for each model
+    aggregate = []
+    for model, ratings in model_ratings.items():
+        if ratings:
+            # Calculate average score
+            scores = [rating_scores.get(r, 3) for r in ratings]
+            avg_score = sum(scores) / len(scores)
+
+            # Map back to rating label
+            if avg_score >= 4.5:
+                consensus = "ACCURATE"
+            elif avg_score >= 3.5:
+                consensus = "MOSTLY ACCURATE"
+            elif avg_score >= 2.5:
+                consensus = "MIXED"
+            elif avg_score >= 1.5:
+                consensus = "MOSTLY INACCURATE"
+            else:
+                consensus = "INACCURATE"
+
+            aggregate.append({
+                "model": model,
+                "consensus_rating": consensus,
+                "average_score": round(avg_score, 2),
+                "ratings_count": len(ratings),
+                "most_reliable_votes": most_reliable_votes.get(model, 0),
+                "rating_breakdown": ratings
+            })
+
+    # Sort by average score (higher is better)
+    aggregate.sort(key=lambda x: x['average_score'], reverse=True)
+
+    return aggregate
+
+
+async def run_full_council(user_query: str) -> Tuple[List, List, List, Dict, Dict]:
+    """
+    Run the complete 4-stage council process.
 
     Args:
         user_query: The user's question
 
     Returns:
-        Tuple of (stage1_results, stage2_results, stage3_result, metadata)
+        Tuple of (stage1_results, fact_check_results, stage3_results, stage4_result, metadata)
     """
     # Stage 1: Collect individual responses
     stage1_results = await stage1_collect_responses(user_query)
 
     # If no models responded successfully, return error
     if not stage1_results:
-        return [], [], {
+        return [], [], [], {
             "model": "error",
             "response": "All models failed to respond. Please try again."
         }, {}
 
-    # Stage 2: Collect rankings
-    stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results)
+    # Stage 2: Fact-check each other's responses
+    fact_check_results, label_to_model = await stage2_fact_check(user_query, stage1_results)
+
+    # Calculate aggregate fact-check ratings
+    aggregate_fact_checks = calculate_aggregate_fact_checks(fact_check_results, label_to_model)
+
+    # Stage 3: Collect rankings (informed by fact-checks)
+    stage3_results = await stage3_collect_rankings(
+        user_query, stage1_results, fact_check_results, label_to_model
+    )
 
     # Calculate aggregate rankings
-    aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+    aggregate_rankings = calculate_aggregate_rankings(stage3_results, label_to_model)
 
-    # Stage 3: Synthesize final answer
-    stage3_result = await stage3_synthesize_final(
+    # Stage 4: Synthesize final answer with fact-check validation
+    stage4_result = await stage4_synthesize_final(
         user_query,
         stage1_results,
-        stage2_results
+        fact_check_results,
+        stage3_results,
+        label_to_model
     )
 
     # Prepare metadata
     metadata = {
         "label_to_model": label_to_model,
+        "aggregate_fact_checks": aggregate_fact_checks,
         "aggregate_rankings": aggregate_rankings
     }
 
-    return stage1_results, stage2_results, stage3_result, metadata
+    return stage1_results, fact_check_results, stage3_results, stage4_result, metadata

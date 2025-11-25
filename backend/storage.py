@@ -130,17 +130,19 @@ def add_user_message(conversation_id: str, content: str):
 def add_assistant_message(
     conversation_id: str,
     stage1: List[Dict[str, Any]],
-    stage2: List[Dict[str, Any]],
-    stage3: Dict[str, Any]
+    fact_check: List[Dict[str, Any]],
+    stage3: List[Dict[str, Any]],
+    stage4: Dict[str, Any]
 ):
     """
-    Add an assistant message with all 3 stages to a conversation.
+    Add an assistant message with all 4 stages to a conversation.
 
     Args:
         conversation_id: Conversation identifier
         stage1: List of individual model responses
-        stage2: List of model rankings
-        stage3: Final synthesized response
+        fact_check: List of fact-check analyses from each model
+        stage3: List of model rankings (informed by fact-checks)
+        stage4: Final synthesized response with fact-check validation
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:
@@ -149,8 +151,9 @@ def add_assistant_message(
     conversation["messages"].append({
         "role": "assistant",
         "stage1": stage1,
-        "stage2": stage2,
-        "stage3": stage3
+        "fact_check": fact_check,
+        "stage3": stage3,
+        "stage4": stage4
     })
 
     save_conversation(conversation)

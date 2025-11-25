@@ -73,13 +73,15 @@ function App() {
       const assistantMessage = {
         role: 'assistant',
         stage1: null,
-        stage2: null,
+        fact_check: null,
         stage3: null,
+        stage4: null,
         metadata: null,
         loading: {
           stage1: false,
-          stage2: false,
+          fact_check: false,
           stage3: false,
+          stage4: false,
         },
       };
 
@@ -111,22 +113,26 @@ function App() {
             });
             break;
 
-          case 'stage2_start':
+          case 'fact_check_start':
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
-              lastMsg.loading.stage2 = true;
+              lastMsg.loading.fact_check = true;
               return { ...prev, messages };
             });
             break;
 
-          case 'stage2_complete':
+          case 'fact_check_complete':
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
-              lastMsg.stage2 = event.data;
-              lastMsg.metadata = event.metadata;
-              lastMsg.loading.stage2 = false;
+              lastMsg.fact_check = event.data;
+              lastMsg.metadata = {
+                ...lastMsg.metadata,
+                label_to_model: event.metadata.label_to_model,
+                aggregate_fact_checks: event.metadata.aggregate_fact_checks,
+              };
+              lastMsg.loading.fact_check = false;
               return { ...prev, messages };
             });
             break;
@@ -145,7 +151,30 @@ function App() {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
               lastMsg.stage3 = event.data;
+              lastMsg.metadata = {
+                ...lastMsg.metadata,
+                aggregate_rankings: event.metadata.aggregate_rankings,
+              };
               lastMsg.loading.stage3 = false;
+              return { ...prev, messages };
+            });
+            break;
+
+          case 'stage4_start':
+            setCurrentConversation((prev) => {
+              const messages = [...prev.messages];
+              const lastMsg = messages[messages.length - 1];
+              lastMsg.loading.stage4 = true;
+              return { ...prev, messages };
+            });
+            break;
+
+          case 'stage4_complete':
+            setCurrentConversation((prev) => {
+              const messages = [...prev.messages];
+              const lastMsg = messages[messages.length - 1];
+              lastMsg.stage4 = event.data;
+              lastMsg.loading.stage4 = false;
               return { ...prev, messages };
             });
             break;
