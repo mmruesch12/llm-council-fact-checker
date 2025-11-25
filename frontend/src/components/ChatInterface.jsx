@@ -7,6 +7,15 @@ import Stage3 from './Stage3';
 import Stage4 from './Stage4';
 import './ChatInterface.css';
 
+function formatTimestamp(timestamp) {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default function ChatInterface({
   conversation,
   onSendMessage,
@@ -63,7 +72,12 @@ export default function ChatInterface({
             <div key={index} className="message-group">
               {msg.role === 'user' ? (
                 <div className="user-message">
-                  <div className="message-label">You</div>
+                  <div className="message-header">
+                    <span className="message-label">You</span>
+                    {msg.timestamp && (
+                      <span className="message-timestamp">{formatTimestamp(msg.timestamp)}</span>
+                    )}
+                  </div>
                   <div className="message-content">
                     <div className="markdown-content">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -72,7 +86,12 @@ export default function ChatInterface({
                 </div>
               ) : (
                 <div className="assistant-message">
-                  <div className="message-label">LLM Council</div>
+                  <div className="message-header">
+                    <span className="message-label">LLM Council</span>
+                    {msg.timestamp && (
+                      <span className="message-timestamp">{formatTimestamp(msg.timestamp)}</span>
+                    )}
+                  </div>
 
                   {/* Stage 1: Individual Responses */}
                   {msg.loading?.stage1 && (

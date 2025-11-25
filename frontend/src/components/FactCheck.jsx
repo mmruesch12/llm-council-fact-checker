@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import ResponseTime from './ResponseTime';
 import './FactCheck.css';
 
 function deAnonymizeText(text, labelToModel) {
@@ -80,13 +81,17 @@ export default function FactCheck({ factChecks, labelToModel, aggregateFactCheck
             onClick={() => setActiveTab(index)}
           >
             {fc.model.split('/')[1] || fc.model}
+            {fc.response_time_ms && (
+              <ResponseTime responseTimeMs={fc.response_time_ms} />
+            )}
           </button>
         ))}
       </div>
 
       <div className="tab-content">
-        <div className="fact-check-model">
-          {factChecks[activeTab].model}
+        <div className="fact-check-header">
+          <span className="fact-check-model">{factChecks[activeTab].model}</span>
+          <ResponseTime responseTimeMs={factChecks[activeTab].response_time_ms} />
         </div>
         <div className="fact-check-content markdown-content">
           <ReactMarkdown>

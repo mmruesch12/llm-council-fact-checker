@@ -105,10 +105,16 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+.model-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
 .model-name {
   color: var(--text-tertiary);
   font-size: 12px;
-  margin-bottom: var(--space-md);
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   display: flex;
   align-items: center;
@@ -122,6 +128,19 @@
   background: var(--gradient-primary);
   border-radius: var(--radius-full);
   animation: pulse 2s ease-in-out infinite;
+}
+
+/* Tab with response time */
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tab .response-time {
+  font-size: 10px;
+  padding: 1px 6px;
 }
 
 .response-text {

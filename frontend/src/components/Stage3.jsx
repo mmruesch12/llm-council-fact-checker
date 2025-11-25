@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import ResponseTime from './ResponseTime';
 import './Stage2.css';
 
 function deAnonymizeText(text, labelToModel) {
@@ -39,13 +40,17 @@ export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
             onClick={() => setActiveTab(index)}
           >
             {rank.model.split('/')[1] || rank.model}
+            {rank.response_time_ms && (
+              <ResponseTime responseTimeMs={rank.response_time_ms} />
+            )}
           </button>
         ))}
       </div>
 
       <div className="tab-content">
-        <div className="ranking-model">
-          {rankings[activeTab].model}
+        <div className="ranking-header">
+          <span className="ranking-model">{rankings[activeTab].model}</span>
+          <ResponseTime responseTimeMs={rankings[activeTab].response_time_ms} />
         </div>
         <div className="ranking-content markdown-content">
           <ReactMarkdown>

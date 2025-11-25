@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import ResponseTime from './ResponseTime';
 import './Stage1.css';
 
 export default function Stage1({ responses }) {
@@ -21,12 +22,18 @@ export default function Stage1({ responses }) {
             onClick={() => setActiveTab(index)}
           >
             {resp.model.split('/')[1] || resp.model}
+            {resp.response_time_ms && (
+              <ResponseTime responseTimeMs={resp.response_time_ms} />
+            )}
           </button>
         ))}
       </div>
 
       <div className="tab-content">
-        <div className="model-name">{responses[activeTab].model}</div>
+        <div className="model-header">
+          <span className="model-name">{responses[activeTab].model}</span>
+          <ResponseTime responseTimeMs={responses[activeTab].response_time_ms} />
+        </div>
         <div className="response-text markdown-content">
           <ReactMarkdown>{responses[activeTab].response}</ReactMarkdown>
         </div>

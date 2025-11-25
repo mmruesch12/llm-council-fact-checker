@@ -1,0 +1,66 @@
+/* ========================================
+   Response Time Indicator
+   ======================================== */
+
+.response-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+}
+
+.response-time .clock-icon {
+  flex-shrink: 0;
+}
+
+.response-time .time-label {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.response-time .time-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fast: < 5 seconds - Green */
+.response-time.speed-fast {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--success);
+}
+
+.response-time.speed-fast .clock-icon {
+  stroke: var(--success);
+}
+
+/* Average: 5-15 seconds - Yellow/Orange */
+.response-time.speed-average {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning);
+}
+
+.response-time.speed-average .clock-icon {
+  stroke: var(--warning);
+}
+
+/* Slow: > 15 seconds - Red */
+.response-time.speed-slow {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error);
+}
+
+.response-time.speed-slow .clock-icon {
+  stroke: var(--error);
+}
+
+/* Compact variant for tabs */
+.response-time-compact {
+  font-size: 10px;
+  padding: 1px 6px;
+}

@@ -121,7 +121,8 @@ def add_user_message(conversation_id: str, content: str):
 
     conversation["messages"].append({
         "role": "user",
-        "content": content
+        "content": content,
+        "timestamp": datetime.utcnow().isoformat()
     })
 
     save_conversation(conversation)
@@ -153,7 +154,8 @@ def add_assistant_message(
         "stage1": stage1,
         "fact_check": fact_check,
         "stage3": stage3,
-        "stage4": stage4
+        "stage4": stage4,
+        "timestamp": datetime.utcnow().isoformat()
     })
 
     save_conversation(conversation)

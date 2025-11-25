@@ -32,7 +32,8 @@ async def stage1_collect_responses(
         if response is not None:  # Only include successful responses
             stage1_results.append({
                 "model": model,
-                "response": response.get('content', '')
+                "response": response.get('content', ''),
+                "response_time_ms": response.get('response_time_ms')
             })
 
     return stage1_results
@@ -117,7 +118,8 @@ Now provide your detailed fact-check analysis:"""
             fact_check_results.append({
                 "model": model,
                 "fact_check": full_text,
-                "parsed_summary": parsed
+                "parsed_summary": parsed,
+                "response_time_ms": response.get('response_time_ms')
             })
 
     return fact_check_results, label_to_model
@@ -258,7 +260,8 @@ Now provide your evaluation and ranking:"""
             stage3_results.append({
                 "model": model,
                 "ranking": full_text,
-                "parsed_ranking": parsed
+                "parsed_ranking": parsed,
+                "response_time_ms": response.get('response_time_ms')
             })
 
     return stage3_results
@@ -356,12 +359,14 @@ Now provide your Chairman synthesis:"""
         # Fallback if chairman fails
         return {
             "model": chairman,
-            "response": "Error: Unable to generate final synthesis."
+            "response": "Error: Unable to generate final synthesis.",
+            "response_time_ms": None
         }
 
     return {
         "model": chairman,
-        "response": response.get('content', '')
+        "response": response.get('content', ''),
+        "response_time_ms": response.get('response_time_ms')
     }
 
 

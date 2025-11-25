@@ -221,11 +221,17 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+.fact-check-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
 .fact-check-model {
   color: var(--text-tertiary);
   font-size: 12px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  margin-bottom: var(--space-md);
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -237,6 +243,19 @@
   height: 8px;
   background: var(--gradient-warm);
   border-radius: var(--radius-full);
+}
+
+/* Tab with response time */
+.fact-check .tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.fact-check .tab .response-time {
+  font-size: 10px;
+  padding: 1px 6px;
 }
 
 .fact-check-content {
