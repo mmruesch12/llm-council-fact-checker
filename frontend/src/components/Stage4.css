@@ -1,25 +1,190 @@
+/* ========================================
+   Stage 4 - Final Answer (Success/Green Theme)
+   Premium styling for the conclusion
+   ======================================== */
+
 .stage4 {
-  background: #f0fff0;
-  border-color: #c8e6c8;
+  background: var(--bg-secondary);
+  position: relative;
+  border-color: var(--success-border);
+}
+
+/* Override stage gradient for final answer */
+.stage4::before {
+  background: var(--gradient-success) !important;
+  height: 3px;
+}
+
+.stage4 .stage-title::before {
+  content: '04';
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+/* Add subtle glow effect to the entire card */
+.stage4::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  background: var(--gradient-success);
+  opacity: 0.1;
+  z-index: -1;
+  filter: blur(20px);
 }
 
 .final-response {
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 6px;
-  border: 1px solid #c8e6c8;
+  background: var(--bg-tertiary);
+  padding: var(--space-xl);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--success-border);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative corner accent */
+.final-response::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle at top right, var(--success-bg) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .chairman-label {
-  color: #2d8a2d;
+  color: var(--success);
   font-size: 12px;
-  font-family: monospace;
-  margin-bottom: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  margin-bottom: var(--space-lg);
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--success-border);
+}
+
+.chairman-label::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background: var(--success);
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 12px var(--success);
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .final-text {
-  color: #333;
-  line-height: 1.7;
+  color: var(--text-primary);
+  line-height: 1.8;
   font-size: 15px;
+}
+
+/* Special styling for markdown headings in final answer */
+.final-text h2 {
+  color: var(--success);
+  font-size: 1.1rem;
+  margin: var(--space-xl) 0 var(--space-md) 0;
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--success-border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.final-text h2:first-child {
+  margin-top: 0;
+}
+
+.final-text h2::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: var(--gradient-success);
+  border-radius: 2px;
+}
+
+.final-text h3 {
+  color: var(--accent-cyan);
+  font-size: 1rem;
+  margin: var(--space-lg) 0 var(--space-sm) 0;
+}
+
+/* Highlight blockquotes in final answer */
+.final-text blockquote {
+  background: var(--success-bg);
+  border-left: 3px solid var(--success);
+  padding: var(--space-md);
+  margin: var(--space-md) 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.final-text blockquote p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Lists in final answer */
+.final-text ul,
+.final-text ol {
+  margin: var(--space-md) 0;
+  padding-left: var(--space-xl);
+}
+
+.final-text li {
+  margin: var(--space-sm) 0;
+  color: var(--text-secondary);
+  position: relative;
+}
+
+.final-text ul li::marker {
+  color: var(--success);
+}
+
+.final-text ol li::marker {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* Code blocks in final answer */
+.final-text code {
+  background: var(--bg-elevated);
+  border-color: var(--success-border);
+}
+
+.final-text pre {
+  background: var(--bg-primary);
+  border: 1px solid var(--success-border);
+}
+
+/* Strong/emphasis */
+.final-text strong {
+  color: var(--success);
+}
+
+/* Tables */
+.final-text table {
+  border-color: var(--success-border);
+}
+
+.final-text th {
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
+.final-text td {
+  border-color: var(--success-border);
+}
+
+/* Links */
+.final-text a {
+  color: var(--success);
+}
+
+.final-text a:hover {
+  color: var(--accent-cyan);
 }

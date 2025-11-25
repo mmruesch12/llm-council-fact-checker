@@ -1,65 +1,130 @@
+/* ========================================
+   Stage 1 - Individual Responses
+   ======================================== */
+
 .stage {
-  margin: 24px 0;
-  padding: 20px;
-  background: #fafafa;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  margin: var(--space-lg) 0;
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Subtle gradient accent */
+.stage::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-primary);
+  opacity: 0.6;
 }
 
 .stage-title {
-  margin: 0 0 16px 0;
-  color: #333;
-  font-size: 16px;
+  margin: 0 0 var(--space-lg) 0;
+  color: var(--text-primary);
+  font-size: 1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
+.stage-title::before {
+  content: '01';
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0;
+}
+
+/* Tabs */
 .tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
   flex-wrap: wrap;
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .tab {
-  padding: 8px 16px;
-  background: #ffffff;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px 6px 0 0;
-  color: #666;
+  padding: var(--space-sm) var(--space-md);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  position: relative;
 }
 
 .tab:hover {
-  background: #f0f0f0;
-  color: #333;
-  border-color: #4a90e2;
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  border-color: var(--glass-border);
 }
 
 .tab.active {
-  background: #ffffff;
-  color: #4a90e2;
-  border-color: #4a90e2;
-  border-bottom-color: #ffffff;
-  font-weight: 600;
+  background: var(--glass-bg);
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 12px var(--accent-blue-glow);
 }
 
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--accent-blue);
+}
+
+/* Tab Content */
 .tab-content {
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-tertiary);
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  animation: fadeIn 0.3s ease-out;
 }
 
 .model-name {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 12px;
-  margin-bottom: 12px;
-  font-family: monospace;
+  margin-bottom: var(--space-md);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.model-name::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .response-text {
-  color: #333;
-  line-height: 1.6;
+  color: var(--text-primary);
+  line-height: 1.7;
 }
