@@ -16,9 +16,16 @@ function App() {
   const [availableModels, setAvailableModels] = useState([]);
   const [councilModels, setCouncilModels] = useState([]);
   const [chairmanModel, setChairmanModel] = useState('');
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // Streaming view mode: 'grid' for streaming quadrants, 'tabs' for traditional tab view
   const [streamingViewMode, setStreamingViewMode] = useState('grid');
+
+  // Local storage keys for model persistence
+  const STORAGE_KEYS = {
+    councilModels: 'llm-council-selected-council-models',
+    chairmanModel: 'llm-council-selected-chairman-model',
+  };
 
   // Streaming state for live parallel responses
   const [streamingState, setStreamingState] = useState({
@@ -42,9 +49,37 @@ function App() {
   const loadModels = async () => {
     try {
       const data = await api.getModels();
+      const availableModelIds = data.available_models.map(m => m.id);
       setAvailableModels(data.available_models);
-      setCouncilModels(data.default_council);
-      setChairmanModel(data.default_chairman);
+
+      // Try to restore saved council models from localStorage
+      const savedCouncil = localStorage.getItem(STORAGE_KEYS.councilModels);
+      if (savedCouncil) {
+        try {
+          const parsed = JSON.parse(savedCouncil);
+          // Validate that all saved models still exist in available models
+          const validModels = parsed.filter(id => availableModelIds.includes(id));
+          if (validModels.length > 0) {
+            setCouncilModels(validModels);
+          } else {
+            setCouncilModels(data.default_council);
+          }
+        } catch {
+          setCouncilModels(data.default_council);
+        }
+      } else {
+        setCouncilModels(data.default_council);
+      }
+
+      // Try to restore saved chairman model from localStorage
+      const savedChairman = localStorage.getItem(STORAGE_KEYS.chairmanModel);
+      if (savedChairman && availableModelIds.includes(savedChairman)) {
+        setChairmanModel(savedChairman);
+      } else {
+        setChairmanModel(data.default_chairman);
+      }
+
+      setModelsLoaded(true);
     } catch (error) {
       console.error('Failed to load models:', error);
     }
@@ -56,6 +91,20 @@ function App() {
       loadConversation(currentConversationId);
     }
   }, [currentConversationId]);
+
+  // Persist council models to localStorage when changed
+  useEffect(() => {
+    if (modelsLoaded && councilModels.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.councilModels, JSON.stringify(councilModels));
+    }
+  }, [councilModels, modelsLoaded]);
+
+  // Persist chairman model to localStorage when changed
+  useEffect(() => {
+    if (modelsLoaded && chairmanModel) {
+      localStorage.setItem(STORAGE_KEYS.chairmanModel, chairmanModel);
+    }
+  }, [chairmanModel, modelsLoaded]);
 
   const loadConversations = async () => {
     try {
