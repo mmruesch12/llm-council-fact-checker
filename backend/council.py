@@ -1,8 +1,9 @@
 """3-stage LLM Council orchestration."""
 
+import json
 from typing import List, Dict, Any, Tuple
 from .openrouter import query_models_parallel, query_model
-from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
+from .config import COUNCIL_MODELS, CHAIRMAN_MODEL, ERROR_TYPES
 
 
 async def stage1_collect_responses(
@@ -561,6 +562,117 @@ def calculate_aggregate_fact_checks(
     aggregate.sort(key=lambda x: x['average_score'], reverse=True)
 
     return aggregate
+
+
+async def classify_errors(
+    user_query: str,
+    fact_check_results: List[Dict[str, Any]],
+    label_to_model: Dict[str, str],
+    chairman_model: str = None
+) -> List[Dict[str, Any]]:
+    """
+    Have the chairman classify inaccuracies found during fact-checking.
+
+    Args:
+        user_query: The original user query
+        fact_check_results: Results from Stage 2 (fact-checking)
+        label_to_model: Mapping from labels to model names
+        chairman_model: Optional chairman model ID (defaults to CHAIRMAN_MODEL)
+
+    Returns:
+        List of classified errors ready for cataloging
+    """
+    from .error_catalog import parse_classification_response
+
+    chairman = chairman_model if chairman_model else CHAIRMAN_MODEL
+
+    # Build fact-check context
+    fact_check_text = "\n\n".join([
+        f"Fact-checker ({result['model']}):\n{result['fact_check']}"
+        for result in fact_check_results
+    ])
+
+    # Build the error types list for the prompt
+    error_types_list = "\n".join([f"- {et}" for et in ERROR_TYPES])
+
+    classification_prompt = f"""You are classifying factual errors found during a fact-checking process.
+
+The original question was about: {user_query}
+
+Here are the fact-check analyses from multiple reviewers:
+
+{fact_check_text}
+
+---
+
+The anonymous response labels map to these models:
+{json.dumps(label_to_model, indent=2)}
+
+---
+
+Your task:
+1. Review all the fact-check analyses above
+2. Identify ALL claims that were flagged as INACCURATE by fact-checkers
+3. For EACH inaccurate claim, classify it into ONE of these error types:
+
+{error_types_list}
+
+IMPORTANT FORMATTING REQUIREMENTS:
+- Summarize the question context in 10 words or fewer
+- Keep each claim description to 1-2 sentences maximum
+- Keep explanations brief (1-2 sentences)
+
+If NO inaccuracies were found, respond with:
+NO ERRORS FOUND
+
+Otherwise, format your response EXACTLY as follows:
+
+QUESTION SUMMARY: [Brief 10-word-or-fewer summary of the question]
+
+ERROR CLASSIFICATIONS:
+---
+MODEL: [full model identifier, e.g., openai/gpt-4o]
+ERROR_TYPE: [one of the error types listed above]
+CLAIM: [the inaccurate claim, 1-2 sentences max]
+EXPLANATION: [brief explanation of why it's wrong, 1-2 sentences max]
+---
+MODEL: [next model if applicable]
+ERROR_TYPE: ...
+CLAIM: ...
+EXPLANATION: ...
+---
+
+Include one block for EACH inaccurate claim identified. Multiple errors from the same model should each have their own block.
+
+Now classify the errors:"""
+
+    messages = [{"role": "user", "content": classification_prompt}]
+
+    response = await query_model(chairman, messages)
+
+    if response is None or "NO ERRORS FOUND" in response.get('content', ''):
+        return []
+
+    response_text = response.get('content', '')
+
+    # Extract question summary
+    question_summary = ""
+    import re
+    summary_match = re.search(r'QUESTION SUMMARY:\s*(.+?)(?:\n|$)', response_text)
+    if summary_match:
+        question_summary = summary_match.group(1).strip()
+    else:
+        # Fallback: truncate the original query
+        question_summary = user_query[:50] + "..." if len(user_query) > 50 else user_query
+
+    # Parse the classification response
+    errors = parse_classification_response(response_text)
+
+    # Add question summary to each error
+    for error in errors:
+        error["question_summary"] = question_summary
+
+    return errors
 
 
 async def run_full_council(

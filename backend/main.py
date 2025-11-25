@@ -10,7 +10,7 @@ import json
 import asyncio
 
 from . import storage
-from .config import AVAILABLE_MODELS, COUNCIL_MODELS, CHAIRMAN_MODEL
+from .config import AVAILABLE_MODELS, COUNCIL_MODELS, CHAIRMAN_MODEL, ERROR_CLASSIFICATION_ENABLED
 from .council import (
     run_full_council,
     generate_conversation_title,
@@ -19,8 +19,10 @@ from .council import (
     stage3_collect_rankings,
     stage4_synthesize_final,
     calculate_aggregate_rankings,
-    calculate_aggregate_fact_checks
+    calculate_aggregate_fact_checks,
+    classify_errors
 )
+from . import error_catalog
 
 app = FastAPI(title="LLM Council API")
 
@@ -130,6 +132,19 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
         request.chairman_model
     )
 
+    # Classify and catalog any errors found during fact-checking (if enabled)
+    if ERROR_CLASSIFICATION_ENABLED:
+        classified_errors = await classify_errors(
+            request.content,
+            fact_check_results,
+            metadata.get("label_to_model", {}),
+            request.chairman_model
+        )
+        if classified_errors:
+            for error in classified_errors:
+                error["conversation_id"] = conversation_id
+            error_catalog.add_errors(classified_errors)
+
     # Add assistant message with all stages
     storage.add_assistant_message(
         conversation_id,
@@ -194,6 +209,19 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             yield f"data: {json.dumps({'type': 'stage4_start'})}\n\n"
             stage4_result = await stage4_synthesize_final(request.content, stage1_results, fact_check_results, stage3_results, label_to_model, request.chairman_model)
             yield f"data: {json.dumps({'type': 'stage4_complete', 'data': stage4_result})}\n\n"
+
+            # Classify and catalog any errors found during fact-checking (if enabled)
+            if ERROR_CLASSIFICATION_ENABLED:
+                classified_errors = await classify_errors(
+                    request.content,
+                    fact_check_results,
+                    label_to_model,
+                    request.chairman_model
+                )
+                if classified_errors:
+                    for error in classified_errors:
+                        error["conversation_id"] = conversation_id
+                    error_catalog.add_errors(classified_errors)
 
             # Wait for title generation if it was started
             if title_task:

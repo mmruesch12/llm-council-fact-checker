@@ -46,3 +46,22 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"
+
+# Error catalog file path
+ERROR_CATALOG_FILE = "data/error_catalog.json"
+
+# Feature flag for error classification
+ERROR_CLASSIFICATION_ENABLED = os.getenv("ERROR_CLASSIFICATION_ENABLED", "true").lower() == "true"
+
+# Predefined error taxonomy for fact-checking classification
+ERROR_TYPES = [
+    "Hallucinated Fact",        # Made-up information with no basis
+    "Outdated Information",     # Was true but no longer accurate
+    "Numerical/Statistical Error",  # Wrong numbers, percentages, dates
+    "Misattribution",           # Attributed to wrong source/person
+    "Overgeneralization",       # Stated as universal when only partially true
+    "Conflation",               # Mixed up two distinct concepts/events
+    "Omission of Critical Context",  # Technically true but misleading
+    "Logical Fallacy",          # Faulty reasoning leading to wrong conclusion
+    "Other",                    # Doesn't fit above categories
+]
