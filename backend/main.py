@@ -316,16 +316,20 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
             # Classify and catalog any errors found during fact-checking (if enabled)
             if ERROR_CLASSIFICATION_ENABLED:
+                yield f"data: {json.dumps({'type': 'cataloging_start'})}\n\n"
                 classified_errors = await classify_errors(
                     request.content,
                     fact_check_results,
                     label_to_model,
                     request.chairman_model
                 )
+                errors_cataloged = 0
                 if classified_errors:
                     for error in classified_errors:
                         error["conversation_id"] = conversation_id
                     error_catalog.add_errors(classified_errors)
+                    errors_cataloged = len(classified_errors)
+                yield f"data: {json.dumps({'type': 'cataloging_complete', 'data': {'errors_cataloged': errors_cataloged}})}\n\n"
 
             # Wait for title generation if it was started
             if title_task:

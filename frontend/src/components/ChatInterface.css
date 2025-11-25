@@ -341,3 +341,39 @@
 .toggle-btn.active svg {
   opacity: 1;
 }
+
+/* Cataloging Indicator */
+.cataloging-indicator {
+  margin-top: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: var(--radius-lg);
+  animation: catalogingPulse 2s ease-in-out infinite;
+}
+
+.cataloging-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.cataloging-spinner {
+  border-color: rgba(139, 92, 246, 0.2);
+  border-top-color: #8b5cf6;
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes catalogingPulse {
+  0%, 100% {
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+  }
+  50% {
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+  }
+}
