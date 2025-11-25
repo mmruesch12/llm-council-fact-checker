@@ -1,8 +1,9 @@
 """3-stage LLM Council orchestration."""
 
 import json
-from typing import List, Dict, Any, Tuple
-from .openrouter import query_models_parallel, query_model
+import asyncio
+from typing import List, Dict, Any, Tuple, Callable, AsyncGenerator
+from .openrouter import query_models_parallel, query_model, query_models_parallel_streaming
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL, ERROR_TYPES
 
 
@@ -706,6 +707,230 @@ Now classify the errors:"""
         error["question_summary"] = question_summary
 
     return errors
+
+
+async def stage1_collect_responses_streaming(
+    user_query: str,
+    on_chunk: Callable[[str, int, str], None],
+    council_models: List[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Stage 1 with streaming: Collect individual responses from all council models.
+    Streams tokens via on_chunk callback as they arrive.
+
+    Args:
+        user_query: The user's question
+        on_chunk: Async callback (model, instance, chunk_text) -> None
+        council_models: Optional list of model IDs to use
+
+    Returns:
+        List of dicts with 'model', 'instance', and 'response' keys.
+    """
+    models = council_models if council_models else COUNCIL_MODELS
+    messages = [{"role": "user", "content": user_query}]
+
+    # Query all models in parallel with streaming
+    responses = await query_models_parallel_streaming(models, messages, on_chunk)
+
+    # Format results
+    stage1_results = []
+    for item in responses:
+        response = item.get('response')
+        if response is not None:
+            stage1_results.append({
+                "model": item['model'],
+                "instance": item['instance'],
+                "response": response.get('content', ''),
+                "response_time_ms": response.get('response_time_ms')
+            })
+
+    return stage1_results
+
+
+async def stage2_fact_check_streaming(
+    user_query: str,
+    stage1_results: List[Dict[str, Any]],
+    on_chunk: Callable[[str, int, str], None],
+    council_models: List[str] = None
+) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    """
+    Stage 2 with streaming: Each model fact-checks the other models' responses.
+
+    Args:
+        user_query: The original user query
+        stage1_results: Results from Stage 1
+        on_chunk: Async callback (model, instance, chunk_text) -> None
+        council_models: Optional list of model IDs to use
+
+    Returns:
+        Tuple of (fact_check list, label_to_model mapping).
+    """
+    models = council_models if council_models else COUNCIL_MODELS
+    labels = [chr(65 + i) for i in range(len(stage1_results))]
+
+    label_to_model = {
+        f"Response {label}": {
+            "model": result['model'],
+            "instance": result.get('instance', idx)
+        }
+        for idx, (label, result) in enumerate(zip(labels, stage1_results))
+    }
+
+    responses_text = "\n\n".join([
+        f"Response {label}:\n{result['response']}"
+        for label, result in zip(labels, stage1_results)
+    ])
+
+    fact_check_prompt = f"""You are a fact-checker evaluating different AI responses to the following question:
+
+Question: {user_query}
+
+Here are the responses from different models (anonymized):
+
+{responses_text}
+
+Your task is to fact-check each response thoroughly:
+
+1. For EACH response, identify:
+   - **Accurate Claims**: List specific claims that are factually correct
+   - **Inaccurate Claims**: List specific claims that are factually incorrect or misleading, and explain why
+   - **Unverifiable Claims**: List claims that cannot be easily verified or are speculative
+   - **Missing Important Information**: Note any crucial information the response failed to include
+
+2. At the very end of your analysis, provide a summary section.
+
+IMPORTANT: Your summary MUST be formatted EXACTLY as follows:
+- Start with the line "FACT CHECK SUMMARY:" (all caps, with colon)
+- For each response, on a new line write: "Response X: [ACCURATE/MOSTLY ACCURATE/MIXED/MOSTLY INACCURATE/INACCURATE]"
+- After rating all responses, add a line: "MOST RELIABLE: Response X" (the single most factually reliable response)
+
+Example of the correct format for your summary:
+
+FACT CHECK SUMMARY:
+Response A: MOSTLY ACCURATE
+Response B: MIXED
+Response C: ACCURATE
+MOST RELIABLE: Response C
+
+Now provide your detailed fact-check analysis:"""
+
+    messages = [{"role": "user", "content": fact_check_prompt}]
+
+    # Get fact-checks with streaming
+    responses = await query_models_parallel_streaming(models, messages, on_chunk)
+
+    fact_check_results = []
+    for item in responses:
+        response = item.get('response')
+        if response is not None:
+            full_text = response.get('content', '')
+            parsed = parse_fact_check_from_text(full_text)
+            fact_check_results.append({
+                "model": item['model'],
+                "instance": item['instance'],
+                "fact_check": full_text,
+                "parsed_summary": parsed,
+                "response_time_ms": response.get('response_time_ms')
+            })
+
+    return fact_check_results, label_to_model
+
+
+async def stage3_collect_rankings_streaming(
+    user_query: str,
+    stage1_results: List[Dict[str, Any]],
+    fact_check_results: List[Dict[str, Any]],
+    label_to_model: Dict[str, str],
+    on_chunk: Callable[[str, int, str], None],
+    council_models: List[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Stage 3 with streaming: Each model ranks the anonymized responses.
+
+    Args:
+        user_query: The original user query
+        stage1_results: Results from Stage 1
+        fact_check_results: Results from Stage 2
+        label_to_model: Mapping from labels to model names
+        on_chunk: Async callback (model, instance, chunk_text) -> None
+        council_models: Optional list of model IDs to use
+
+    Returns:
+        List of rankings from each model
+    """
+    models = council_models if council_models else COUNCIL_MODELS
+    labels = [label.replace("Response ", "") for label in label_to_model.keys()]
+    labels.sort()
+
+    responses_text = "\n\n".join([
+        f"Response {label}:\n{result['response']}"
+        for label, result in zip(labels, stage1_results)
+    ])
+
+    fact_check_summary = "\n\n".join([
+        f"Fact-checker {i+1}:\n{result['fact_check']}"
+        for i, result in enumerate(fact_check_results)
+    ])
+
+    ranking_prompt = f"""You are evaluating different responses to the following question:
+
+Question: {user_query}
+
+Here are the responses from different models (anonymized):
+
+{responses_text}
+
+---
+
+Here are the fact-check analyses from peer reviewers:
+
+{fact_check_summary}
+
+---
+
+Your task:
+1. Consider both the quality of each response AND the fact-check findings.
+2. Evaluate each response individually, taking into account:
+   - Factual accuracy (as revealed by the fact-checks)
+   - Completeness and helpfulness
+   - Clarity and reasoning
+3. Then, at the very end of your response, provide a final ranking.
+
+IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
+- Start with the line "FINAL RANKING:" (all caps, with colon)
+- Then list the responses from best to worst as a numbered list
+- Each line should be: number, period, space, then ONLY the response label (e.g., "1. Response A")
+- Do not add any other text or explanations in the ranking section
+
+Example of the correct format:
+
+FINAL RANKING:
+1. Response C
+2. Response A
+3. Response B
+
+Now provide your evaluation and ranking:"""
+
+    messages = [{"role": "user", "content": ranking_prompt}]
+
+    # Get rankings with streaming
+    responses = await query_models_parallel_streaming(models, messages, on_chunk)
+
+    stage3_results = []
+    for item in responses:
+        response = item.get('response')
+        if response is not None:
+            full_text = response.get('content', '')
+            parsed = parse_ranking_from_text(full_text)
+            stage3_results.append({
+                "model": item['model'],
+                "instance": item['instance'],
+                "ranking": full_text,
+                "parsed_ranking": parsed,
+                "response_time_ms": response.get('response_time_ms')
+            })
+
+    return stage3_results
 
 
 async def run_full_council(

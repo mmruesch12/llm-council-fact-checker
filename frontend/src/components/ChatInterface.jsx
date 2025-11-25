@@ -5,6 +5,7 @@ import Stage1 from './Stage1';
 import FactCheck from './FactCheck';
 import Stage3 from './Stage3';
 import Stage4 from './Stage4';
+import StreamingGrid from './StreamingGrid';
 import './ChatInterface.css';
 
 function formatTimestamp(timestamp) {
@@ -16,10 +17,23 @@ function formatTimestamp(timestamp) {
   });
 }
 
+// Get stage info for display
+function getStageInfo(stage) {
+  const stageMap = {
+    stage1: { badge: '01', title: 'Individual Responses' },
+    fact_check: { badge: '02', title: 'Fact-Checking' },
+    stage3: { badge: '03', title: 'Peer Rankings' }
+  };
+  return stageMap[stage] || { badge: '??', title: 'Unknown Stage' };
+}
+
 export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
+  streamingState = { isStreaming: false, currentStage: null, models: [], content: {} },
+  streamingViewMode = 'grid',
+  onViewModeChange = () => {},
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -48,6 +62,12 @@ export default function ChatInterface({
     }
   };
 
+  // Convert streaming content object to array for StreamingGrid
+  const getStreamingContentArray = (stage) => {
+    const content = streamingState.content[stage] || {};
+    return streamingState.models.map((_, index) => content[index] || '');
+  };
+
   if (!conversation) {
     return (
       <div className="chat-interface">
@@ -59,8 +79,40 @@ export default function ChatInterface({
     );
   }
 
+  const stageInfo = getStageInfo(streamingState.currentStage);
+  const showStreamingGrid = streamingState.isStreaming && streamingViewMode === 'grid';
+
   return (
     <div className="chat-interface">
+      {/* View Mode Toggle */}
+      <div className="view-mode-toggle">
+        <span className="toggle-label">View Mode:</span>
+        <button
+          className={`toggle-btn ${streamingViewMode === 'grid' ? 'active' : ''}`}
+          onClick={() => onViewModeChange('grid')}
+          title="Show streaming responses in a grid layout"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="1" y="1" width="6" height="6" rx="1" />
+            <rect x="9" y="1" width="6" height="6" rx="1" />
+            <rect x="1" y="9" width="6" height="6" rx="1" />
+            <rect x="9" y="9" width="6" height="6" rx="1" />
+          </svg>
+          Grid
+        </button>
+        <button
+          className={`toggle-btn ${streamingViewMode === 'tabs' ? 'active' : ''}`}
+          onClick={() => onViewModeChange('tabs')}
+          title="Show responses in traditional tab layout"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="1" y="1" width="14" height="4" rx="1" />
+            <rect x="1" y="7" width="14" height="8" rx="1" />
+          </svg>
+          Tabs
+        </button>
+      </div>
+
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
@@ -95,10 +147,19 @@ export default function ChatInterface({
 
                   {/* Stage 1: Individual Responses */}
                   {msg.loading?.stage1 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 1: Collecting individual responses...</span>
-                    </div>
+                    showStreamingGrid && streamingState.currentStage === 'stage1' ? (
+                      <StreamingGrid
+                        models={streamingState.models}
+                        streamingContent={getStreamingContentArray('stage1')}
+                        stageName={stageInfo.badge}
+                        stageTitle={stageInfo.title}
+                      />
+                    ) : (
+                      <div className="stage-loading">
+                        <div className="spinner"></div>
+                        <span>Running Stage 1: Collecting individual responses...</span>
+                      </div>
+                    )
                   )}
                   {msg.stage1 && (
                     <Accordion
@@ -112,10 +173,19 @@ export default function ChatInterface({
 
                   {/* Stage 2: Fact-Checking */}
                   {msg.loading?.fact_check && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 2: Fact-checking each other's responses...</span>
-                    </div>
+                    showStreamingGrid && streamingState.currentStage === 'fact_check' ? (
+                      <StreamingGrid
+                        models={streamingState.models}
+                        streamingContent={getStreamingContentArray('fact_check')}
+                        stageName={stageInfo.badge}
+                        stageTitle={stageInfo.title}
+                      />
+                    ) : (
+                      <div className="stage-loading">
+                        <div className="spinner"></div>
+                        <span>Running Stage 2: Fact-checking each other's responses...</span>
+                      </div>
+                    )
                   )}
                   {msg.fact_check && (
                     <Accordion
@@ -134,10 +204,19 @@ export default function ChatInterface({
 
                   {/* Stage 3: Peer Rankings (informed by fact-checks) */}
                   {msg.loading?.stage3 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 3: Peer rankings (informed by fact-checks)...</span>
-                    </div>
+                    showStreamingGrid && streamingState.currentStage === 'stage3' ? (
+                      <StreamingGrid
+                        models={streamingState.models}
+                        streamingContent={getStreamingContentArray('stage3')}
+                        stageName={stageInfo.badge}
+                        stageTitle={stageInfo.title}
+                      />
+                    ) : (
+                      <div className="stage-loading">
+                        <div className="spinner"></div>
+                        <span>Running Stage 3: Peer rankings (informed by fact-checks)...</span>
+                      </div>
+                    )
                   )}
                   {msg.stage3 && (
                     <Accordion
