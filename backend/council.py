@@ -621,6 +621,13 @@ async def classify_errors(
     # Build the error types list for the prompt
     error_types_list = "\n".join([f"- {et}" for et in ERROR_TYPES])
 
+    # Create a simplified label_to_model mapping with just model IDs (no instances)
+    # This ensures errors are cataloged against the model itself, not specific instances
+    simple_label_to_model = {
+        label: info['model'] if isinstance(info, dict) else info
+        for label, info in label_to_model.items()
+    }
+
     classification_prompt = f"""You are classifying factual errors found during a fact-checking process.
 
 The original question was about: {user_query}
@@ -632,7 +639,7 @@ Here are the fact-check analyses from multiple reviewers:
 ---
 
 The anonymous response labels map to these models:
-{json.dumps(label_to_model, indent=2)}
+{json.dumps(simple_label_to_model, indent=2)}
 
 ---
 
