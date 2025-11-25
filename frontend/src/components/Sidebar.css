@@ -37,15 +37,55 @@
   z-index: 1;
 }
 
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
 .sidebar-header h1 {
   font-size: 1.25rem;
   font-weight: 700;
-  margin: 0 0 var(--space-md) 0;
+  margin: 0;
   letter-spacing: -0.03em;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.theme-toggle:hover {
+  background: var(--glass-highlight);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+  box-shadow: var(--shadow-glow-purple);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
+.theme-toggle svg {
+  transition: transform var(--transition-normal);
+}
+
+.theme-toggle:hover svg {
+  transform: rotate(15deg);
 }
 
 .new-conversation-btn {
