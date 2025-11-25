@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import Accordion from './Accordion';
 import Stage1 from './Stage1';
 import FactCheck from './FactCheck';
 import Stage3 from './Stage3';
@@ -80,7 +81,15 @@ export default function ChatInterface({
                       <span>Running Stage 1: Collecting individual responses...</span>
                     </div>
                   )}
-                  {msg.stage1 && <Stage1 responses={msg.stage1} />}
+                  {msg.stage1 && (
+                    <Accordion
+                      title="Individual Responses"
+                      badge="01"
+                      defaultExpanded={false}
+                    >
+                      <Stage1 responses={msg.stage1} />
+                    </Accordion>
+                  )}
 
                   {/* Stage 2: Fact-Checking */}
                   {msg.loading?.fact_check && (
@@ -90,11 +99,18 @@ export default function ChatInterface({
                     </div>
                   )}
                   {msg.fact_check && (
-                    <FactCheck
-                      factChecks={msg.fact_check}
-                      labelToModel={msg.metadata?.label_to_model}
-                      aggregateFactChecks={msg.metadata?.aggregate_fact_checks}
-                    />
+                    <Accordion
+                      title="Fact-Checking"
+                      badge="02"
+                      variant="fact-check"
+                      defaultExpanded={false}
+                    >
+                      <FactCheck
+                        factChecks={msg.fact_check}
+                        labelToModel={msg.metadata?.label_to_model}
+                        aggregateFactChecks={msg.metadata?.aggregate_fact_checks}
+                      />
+                    </Accordion>
                   )}
 
                   {/* Stage 3: Peer Rankings (informed by fact-checks) */}
@@ -105,11 +121,18 @@ export default function ChatInterface({
                     </div>
                   )}
                   {msg.stage3 && (
-                    <Stage3
-                      rankings={msg.stage3}
-                      labelToModel={msg.metadata?.label_to_model}
-                      aggregateRankings={msg.metadata?.aggregate_rankings}
-                    />
+                    <Accordion
+                      title="Peer Rankings"
+                      badge="03"
+                      variant="rankings"
+                      defaultExpanded={false}
+                    >
+                      <Stage3
+                        rankings={msg.stage3}
+                        labelToModel={msg.metadata?.label_to_model}
+                        aggregateRankings={msg.metadata?.aggregate_rankings}
+                      />
+                    </Accordion>
                   )}
 
                   {/* Stage 4: Final Synthesis with Fact-Check Validation */}
@@ -119,7 +142,16 @@ export default function ChatInterface({
                       <span>Running Stage 4: Final synthesis with fact-check validation...</span>
                     </div>
                   )}
-                  {msg.stage4 && <Stage4 finalResponse={msg.stage4} />}
+                  {msg.stage4 && (
+                    <Accordion
+                      title="Final Council Answer"
+                      badge="04"
+                      variant="final"
+                      defaultExpanded={true}
+                    >
+                      <Stage4 finalResponse={msg.stage4} />
+                    </Accordion>
+                  )}
                 </div>
               )}
             </div>

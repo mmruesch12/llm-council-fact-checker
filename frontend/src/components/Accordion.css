@@ -1,0 +1,180 @@
+/* ========================================
+   Accordion Component
+   ======================================== */
+
+.accordion {
+  margin: var(--space-lg) 0;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Gradient accent at top */
+.accordion::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-primary);
+  opacity: 0.6;
+}
+
+/* Variant: fact-check (orange/amber) */
+.accordion-fact-check::before {
+  background: var(--gradient-warm);
+}
+
+.accordion-fact-check .accordion-badge {
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.accordion-fact-check.expanded .accordion-header {
+  border-bottom-color: var(--warning-border);
+}
+
+/* Variant: rankings (purple) */
+.accordion-rankings::before {
+  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-blue) 100%);
+}
+
+.accordion-rankings .accordion-badge {
+  color: var(--accent-purple);
+  background: var(--accent-purple-glow);
+}
+
+.accordion-rankings.expanded .accordion-header {
+  border-bottom-color: rgba(167, 139, 250, 0.3);
+}
+
+/* Variant: final (green/success) */
+.accordion-final::before {
+  background: var(--gradient-success);
+  height: 3px;
+}
+
+.accordion-final {
+  border-color: var(--success-border);
+}
+
+.accordion-final .accordion-badge {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.accordion-final.expanded .accordion-header {
+  border-bottom-color: var(--success-border);
+}
+
+/* Subtle glow for final variant */
+.accordion-final::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  background: var(--gradient-success);
+  opacity: 0.1;
+  z-index: -1;
+  filter: blur(20px);
+}
+
+/* Accordion Header */
+.accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.accordion-header:hover {
+  background: var(--glass-bg);
+}
+
+.accordion.expanded .accordion-header {
+  border-bottom-color: var(--glass-border);
+}
+
+.accordion-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.accordion-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0;
+}
+
+.accordion-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.accordion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-tertiary);
+  transition: transform var(--transition-normal);
+}
+
+.accordion.expanded .accordion-icon {
+  transform: rotate(180deg);
+}
+
+/* Accordion Content */
+.accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--transition-normal);
+}
+
+.accordion.expanded .accordion-content {
+  grid-template-rows: 1fr;
+}
+
+.accordion-inner {
+  overflow: hidden;
+}
+
+.accordion.expanded .accordion-inner {
+  padding: var(--space-lg);
+}
+
+/* Override nested stage styles when inside accordion */
+.accordion .stage {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  animation: none;
+}
+
+.accordion .stage::before {
+  display: none;
+}
+
+.accordion .stage-title {
+  display: none;
+}
