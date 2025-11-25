@@ -287,3 +287,57 @@
   cursor: not-allowed;
   background: var(--bg-tertiary);
 }
+
+/* View Mode Toggle */
+.view-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--glass-border);
+  position: relative;
+  z-index: 10;
+}
+
+.toggle-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-right: var(--space-sm);
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.toggle-btn:hover {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  border-color: var(--accent-blue);
+}
+
+.toggle-btn.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: white;
+}
+
+.toggle-btn svg {
+  opacity: 0.8;
+}
+
+.toggle-btn.active svg {
+  opacity: 1;
+}

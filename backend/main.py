@@ -15,9 +15,13 @@ from .council import (
     run_full_council,
     generate_conversation_title,
     stage1_collect_responses,
+    stage1_collect_responses_streaming,
     stage2_fact_check,
+    stage2_fact_check_streaming,
     stage3_collect_rankings,
+    stage3_collect_rankings_streaming,
     stage4_synthesize_final,
+    stage4_synthesize_final_streaming,
     calculate_aggregate_rankings,
     calculate_aggregate_fact_checks,
     classify_errors
@@ -169,6 +173,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     """
     Send a message and stream the 4-stage council process.
     Returns Server-Sent Events as each stage completes.
+    Supports per-model token streaming via chunk events.
     """
     # Check if conversation exists
     conversation = storage.get_conversation(conversation_id)
@@ -179,6 +184,30 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     is_first_message = len(conversation["messages"]) == 0
 
     async def event_generator():
+        # Queue to collect chunks from parallel model queries
+        chunk_queue = asyncio.Queue()
+
+        # Track the current stage for chunk events
+        current_stage = {"stage": None}
+
+        async def on_chunk(model: str, instance: int, text: str):
+            """Callback for streaming chunks from individual models."""
+            await chunk_queue.put({
+                "type": f"{current_stage['stage']}_chunk",
+                "model": model,
+                "instance": instance,
+                "text": text
+            })
+
+        async def stream_chunks_until_done(done_event: asyncio.Event):
+            """Yield chunks from queue until stage is done."""
+            while not done_event.is_set() or not chunk_queue.empty():
+                try:
+                    chunk = await asyncio.wait_for(chunk_queue.get(), timeout=0.1)
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                except asyncio.TimeoutError:
+                    continue
+
         try:
             # Add user message
             storage.add_user_message(conversation_id, request.content)
@@ -188,26 +217,101 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             if is_first_message:
                 title_task = asyncio.create_task(generate_conversation_title(request.content))
 
-            # Stage 1: Collect responses
-            yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content, request.council_models)
+            # Get models list for streaming init
+            models = request.council_models if request.council_models else COUNCIL_MODELS
+
+            # Stage 1: Collect responses with streaming
+            current_stage["stage"] = "stage1"
+            yield f"data: {json.dumps({'type': 'stage1_start', 'models': models})}\n\n"
+
+            # Run stage 1 with streaming chunks
+            stage1_done = asyncio.Event()
+
+            async def run_stage1():
+                result = await stage1_collect_responses_streaming(
+                    request.content, on_chunk, request.council_models
+                )
+                stage1_done.set()
+                return result
+
+            stage1_task = asyncio.create_task(run_stage1())
+
+            # Stream chunks while stage 1 runs
+            async for chunk_event in stream_chunks_until_done(stage1_done):
+                yield chunk_event
+
+            stage1_results = await stage1_task
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
-            # Stage 2: Fact-check each other's responses
-            yield f"data: {json.dumps({'type': 'fact_check_start'})}\n\n"
-            fact_check_results, label_to_model = await stage2_fact_check(request.content, stage1_results, request.council_models)
+            # Stage 2: Fact-check with streaming
+            current_stage["stage"] = "fact_check"
+            yield f"data: {json.dumps({'type': 'fact_check_start', 'models': models})}\n\n"
+
+            fact_check_done = asyncio.Event()
+
+            async def run_fact_check():
+                result = await stage2_fact_check_streaming(
+                    request.content, stage1_results, on_chunk, request.council_models
+                )
+                fact_check_done.set()
+                return result
+
+            fact_check_task = asyncio.create_task(run_fact_check())
+
+            # Stream chunks while fact-check runs
+            async for chunk_event in stream_chunks_until_done(fact_check_done):
+                yield chunk_event
+
+            fact_check_results, label_to_model = await fact_check_task
             aggregate_fact_checks = calculate_aggregate_fact_checks(fact_check_results, label_to_model)
             yield f"data: {json.dumps({'type': 'fact_check_complete', 'data': fact_check_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_fact_checks': aggregate_fact_checks}})}\n\n"
 
-            # Stage 3: Collect rankings (informed by fact-checks)
-            yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_results = await stage3_collect_rankings(request.content, stage1_results, fact_check_results, label_to_model, request.council_models)
+            # Stage 3: Collect rankings with streaming
+            current_stage["stage"] = "stage3"
+            yield f"data: {json.dumps({'type': 'stage3_start', 'models': models})}\n\n"
+
+            stage3_done = asyncio.Event()
+
+            async def run_stage3():
+                result = await stage3_collect_rankings_streaming(
+                    request.content, stage1_results, fact_check_results,
+                    label_to_model, on_chunk, request.council_models
+                )
+                stage3_done.set()
+                return result
+
+            stage3_task = asyncio.create_task(run_stage3())
+
+            # Stream chunks while stage 3 runs
+            async for chunk_event in stream_chunks_until_done(stage3_done):
+                yield chunk_event
+
+            stage3_results = await stage3_task
             aggregate_rankings = calculate_aggregate_rankings(stage3_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_results, 'metadata': {'aggregate_rankings': aggregate_rankings}})}\n\n"
 
-            # Stage 4: Synthesize final answer with fact-check validation
-            yield f"data: {json.dumps({'type': 'stage4_start'})}\n\n"
-            stage4_result = await stage4_synthesize_final(request.content, stage1_results, fact_check_results, stage3_results, label_to_model, request.chairman_model)
+            # Stage 4: Synthesize final answer with streaming
+            current_stage["stage"] = "stage4"
+            chairman = request.chairman_model if request.chairman_model else CHAIRMAN_MODEL
+            yield f"data: {json.dumps({'type': 'stage4_start', 'models': [chairman]})}\n\n"
+
+            stage4_done = asyncio.Event()
+
+            async def run_stage4():
+                result = await stage4_synthesize_final_streaming(
+                    request.content, stage1_results, fact_check_results,
+                    stage3_results, label_to_model, on_chunk, request.chairman_model
+                )
+                stage4_done.set()
+                return result
+
+            stage4_task = asyncio.create_task(run_stage4())
+
+            # Stream chunks while stage 4 runs
+            async for chunk_event in stream_chunks_until_done(stage4_done):
+                yield chunk_event
+
+            stage4_result = await stage4_task
             yield f"data: {json.dumps({'type': 'stage4_complete', 'data': stage4_result})}\n\n"
 
             # Classify and catalog any errors found during fact-checking (if enabled)
@@ -242,6 +346,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             # Send error event
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 

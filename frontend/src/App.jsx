@@ -17,6 +17,22 @@ function App() {
   const [councilModels, setCouncilModels] = useState([]);
   const [chairmanModel, setChairmanModel] = useState('');
 
+  // Streaming view mode: 'grid' for streaming quadrants, 'tabs' for traditional tab view
+  const [streamingViewMode, setStreamingViewMode] = useState('grid');
+
+  // Streaming state for live parallel responses
+  const [streamingState, setStreamingState] = useState({
+    isStreaming: false,
+    currentStage: null,
+    models: [],
+    content: {
+      stage1: {},     // { [instance]: "accumulated text" }
+      fact_check: {},
+      stage3: {},
+      stage4: {}
+    }
+  });
+
   // Load conversations and models on mount
   useEffect(() => {
     loadConversations();
@@ -118,6 +134,13 @@ function App() {
       await api.sendMessageStream(currentConversationId, content, (eventType, event) => {
         switch (eventType) {
           case 'stage1_start':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: true,
+              currentStage: 'stage1',
+              models: event.models || councilModels,
+              content: { ...prev.content, stage1: {} }
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -126,7 +149,25 @@ function App() {
             });
             break;
 
+          case 'stage1_chunk':
+            setStreamingState(prev => ({
+              ...prev,
+              content: {
+                ...prev.content,
+                stage1: {
+                  ...prev.content.stage1,
+                  [event.instance]: (prev.content.stage1[event.instance] || '') + event.text
+                }
+              }
+            }));
+            break;
+
           case 'stage1_complete':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: false,
+              currentStage: null
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -137,6 +178,13 @@ function App() {
             break;
 
           case 'fact_check_start':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: true,
+              currentStage: 'fact_check',
+              models: event.models || councilModels,
+              content: { ...prev.content, fact_check: {} }
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -145,7 +193,25 @@ function App() {
             });
             break;
 
+          case 'fact_check_chunk':
+            setStreamingState(prev => ({
+              ...prev,
+              content: {
+                ...prev.content,
+                fact_check: {
+                  ...prev.content.fact_check,
+                  [event.instance]: (prev.content.fact_check[event.instance] || '') + event.text
+                }
+              }
+            }));
+            break;
+
           case 'fact_check_complete':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: false,
+              currentStage: null
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -161,6 +227,13 @@ function App() {
             break;
 
           case 'stage3_start':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: true,
+              currentStage: 'stage3',
+              models: event.models || councilModels,
+              content: { ...prev.content, stage3: {} }
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -169,7 +242,25 @@ function App() {
             });
             break;
 
+          case 'stage3_chunk':
+            setStreamingState(prev => ({
+              ...prev,
+              content: {
+                ...prev.content,
+                stage3: {
+                  ...prev.content.stage3,
+                  [event.instance]: (prev.content.stage3[event.instance] || '') + event.text
+                }
+              }
+            }));
+            break;
+
           case 'stage3_complete':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: false,
+              currentStage: null
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -184,6 +275,13 @@ function App() {
             break;
 
           case 'stage4_start':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: true,
+              currentStage: 'stage4',
+              models: event.models || [chairmanModel],
+              content: { ...prev.content, stage4: {} }
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -192,7 +290,25 @@ function App() {
             });
             break;
 
+          case 'stage4_chunk':
+            setStreamingState(prev => ({
+              ...prev,
+              content: {
+                ...prev.content,
+                stage4: {
+                  ...prev.content.stage4,
+                  [event.instance]: (prev.content.stage4[event.instance] || '') + event.text
+                }
+              }
+            }));
+            break;
+
           case 'stage4_complete':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: false,
+              currentStage: null
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -208,13 +324,25 @@ function App() {
             break;
 
           case 'complete':
-            // Stream complete, reload conversations list
+            // Stream complete, reset streaming state and reload conversations list
+            setStreamingState({
+              isStreaming: false,
+              currentStage: null,
+              models: [],
+              content: { stage1: {}, fact_check: {}, stage3: {}, stage4: {} }
+            });
             loadConversations();
             setIsLoading(false);
             break;
 
           case 'error':
             console.error('Stream error:', event.message);
+            setStreamingState({
+              isStreaming: false,
+              currentStage: null,
+              models: [],
+              content: { stage1: {}, fact_check: {}, stage3: {}, stage4: {} }
+            });
             setIsLoading(false);
             break;
 
@@ -253,6 +381,9 @@ function App() {
             conversation={currentConversation}
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
+            streamingState={streamingState}
+            streamingViewMode={streamingViewMode}
+            onViewModeChange={setStreamingViewMode}
           />
         </>
       ) : (
