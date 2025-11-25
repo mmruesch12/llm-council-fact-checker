@@ -1,6 +1,8 @@
-# LLM Council
+# LLM Council (Fact-Checker Fork)
 
 ![llmcouncil](header.jpg)
+
+> **Fork Notice:** This project is a fork of [Andrej Karpathy's LLM Council](https://github.com/karpathy/llm-council). The original project implemented a 3-stage council process. This fork extends it with an additional **fact-checking stage** and an **error cataloging system** to track LLM accuracy over time.
 
 The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to fact-check and rank each other's work, and finally a Chairman LLM produces the final response.
 
@@ -33,7 +35,16 @@ You can view the error catalog from the sidebar to track which models make which
 
 ## Vibe Code Alert
 
-This project was 99% vibe coded as a fun Saturday hack because I wanted to explore and evaluate a number of LLMs side by side in the process of [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's nice and useful to see multiple responses side by side, and also the cross-opinions of all LLMs on each other's outputs. I'm not going to support it in any way, it's provided here as is for other people's inspiration and I don't intend to improve it. Code is ephemeral now and libraries are over, ask your LLM to change it in whatever way you like.
+From the [original project](https://github.com/karpathy/llm-council) by Andrej Karpathy:
+
+> This project was 99% vibe coded as a fun Saturday hack because I wanted to explore and evaluate a number of LLMs side by side in the process of [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's nice and useful to see multiple responses side by side, and also the cross-opinions of all LLMs on each other's outputs. I'm not going to support it in any way, it's provided here as is for other people's inspiration and I don't intend to improve it. Code is ephemeral now and libraries are over, ask your LLM to change it in whatever way you like.
+
+### What This Fork Adds
+
+- **Stage 2: Fact-Checking** — A dedicated fact-checking stage where each LLM evaluates the accuracy of other models' responses
+- **Error Cataloging** — Automatic classification and tracking of factual errors by type and model
+- **Real-Time Streaming Grid** — Watch all models generate responses simultaneously in a grid layout
+- **Dynamic Model Selection** — Choose council members and chairman from the UI sidebar
 
 ## Setup
 
@@ -185,3 +196,7 @@ llm-council-fact-checker/
 ├── start.sh            # Launch both servers
 └── pyproject.toml      # Python dependencies
 ```
+
+## Credits
+
+This project is based on [LLM Council](https://github.com/karpathy/llm-council) by [Andrej Karpathy](https://github.com/karpathy). The original 3-stage council concept and core architecture are his work. This fork adds fact-checking capabilities and error tracking features.
