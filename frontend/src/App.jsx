@@ -37,6 +37,10 @@ function App() {
       fact_check: {},
       stage3: {},
       stage4: {}
+    },
+    cataloging: {
+      isActive: false,
+      errorsCataloged: null
     }
   });
 
@@ -367,6 +371,26 @@ function App() {
             });
             break;
 
+          case 'cataloging_start':
+            setStreamingState(prev => ({
+              ...prev,
+              cataloging: {
+                isActive: true,
+                errorsCataloged: null
+              }
+            }));
+            break;
+
+          case 'cataloging_complete':
+            setStreamingState(prev => ({
+              ...prev,
+              cataloging: {
+                isActive: false,
+                errorsCataloged: event.data?.errors_cataloged || 0
+              }
+            }));
+            break;
+
           case 'title_complete':
             // Reload conversations to get updated title
             loadConversations();
@@ -378,7 +402,8 @@ function App() {
               isStreaming: false,
               currentStage: null,
               models: [],
-              content: { stage1: {}, fact_check: {}, stage3: {}, stage4: {} }
+              content: { stage1: {}, fact_check: {}, stage3: {}, stage4: {} },
+              cataloging: { isActive: false, errorsCataloged: null }
             });
             loadConversations();
             setIsLoading(false);
@@ -390,7 +415,8 @@ function App() {
               isStreaming: false,
               currentStage: null,
               models: [],
-              content: { stage1: {}, fact_check: {}, stage3: {}, stage4: {} }
+              content: { stage1: {}, fact_check: {}, stage3: {}, stage4: {} },
+              cataloging: { isActive: false, errorsCataloged: null }
             });
             setIsLoading(false);
             break;

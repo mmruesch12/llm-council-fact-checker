@@ -32,7 +32,7 @@ export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
-  streamingState = { isStreaming: false, currentStage: null, models: [], content: {} },
+  streamingState = { isStreaming: false, currentStage: null, models: [], content: {}, cataloging: { isActive: false, errorsCataloged: null } },
   streamingViewMode = 'grid',
   onViewModeChange = () => {},
 }) {
@@ -259,6 +259,16 @@ export default function ChatInterface({
                     >
                       <Stage4 finalResponse={msg.stage4} />
                     </Accordion>
+                  )}
+
+                  {/* Error Cataloging Indicator - shows after Stage 4 completes */}
+                  {index === conversation.messages.length - 1 && streamingState.cataloging?.isActive && (
+                    <div className="cataloging-indicator">
+                      <div className="cataloging-content">
+                        <div className="spinner cataloging-spinner"></div>
+                        <span>Cataloging errors for model improvement...</span>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
