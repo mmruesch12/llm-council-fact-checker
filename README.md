@@ -2,13 +2,34 @@
 
 ![llmcouncil](header.jpg)
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to fact-check and rank each other's work, and finally a Chairman LLM produces the final response.
 
-In a bit more detail, here is what happens when you submit a query:
+## How It Works
 
-1. **Stage 1: First opinions**. The user query is given to all LLMs individually, and the responses are collected. The individual responses are shown in a "tab view", so that the user can inspect them all one by one.
-2. **Stage 2: Review**. Each individual LLM is given the responses of the other LLMs. Under the hood, the LLM identities are anonymized so that the LLM can't play favorites when judging their outputs. The LLM is asked to rank them in accuracy and insight.
-3. **Stage 3: Final response**. The designated Chairman of the LLM Council takes all of the model's responses and compiles them into a single final answer that is presented to the user.
+When you submit a query, the council goes through 4 stages:
+
+1. **Stage 1: First Opinions** — The user query is sent to all council LLMs in parallel. Responses stream in real-time and are displayed in a grid view (or tab view), allowing you to watch each model think simultaneously.
+
+2. **Stage 2: Fact-Checking** — Each council LLM receives all other models' anonymized responses and performs a detailed fact-check. They identify accurate claims, inaccurate claims, unverifiable claims, and missing information. Each fact-checker provides a reliability rating (ACCURATE → INACCURATE) and votes for the most reliable response.
+
+3. **Stage 3: Peer Rankings** — Armed with the fact-check results, each LLM ranks all responses considering factual accuracy, completeness, and clarity. An aggregate ranking is calculated across all models.
+
+4. **Stage 4: Chairman Synthesis** — The designated Chairman LLM synthesizes everything: the original responses, fact-check analyses, and peer rankings into a single, comprehensive, fact-validated final answer.
+
+### Error Cataloging
+
+As a bonus feature, the app automatically catalogs factual errors discovered during the fact-checking process. Errors are classified into types:
+
+- Hallucinated Fact
+- Outdated Information
+- Numerical/Statistical Error
+- Misattribution
+- Overgeneralization
+- Conflation
+- Omission of Critical Context
+- Logical Fallacy
+
+You can view the error catalog from the sidebar to track which models make which types of errors over time.
 
 ## Vibe Code Alert
 
@@ -18,7 +39,7 @@ This project was 99% vibe coded as a fun Saturday hack because I wanted to explo
 
 ### 1. Install Dependencies
 
-The project uses [uv](https://docs.astral.sh/uv/) for project management.
+The project uses [uv](https://docs.astral.sh/uv/) for Python project management.
 
 **Backend:**
 ```bash
@@ -47,15 +68,35 @@ Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purcha
 Edit `backend/config.py` to customize the council:
 
 ```python
+# Council members who provide responses, fact-check, and rank
 COUNCIL_MODELS = [
     "openai/gpt-5.1",
     "google/gemini-3-pro-preview",
     "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4",
+    "x-ai/grok-4.1-fast:free",
 ]
 
-CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
+# Chairman who synthesizes the final answer
+CHAIRMAN_MODEL = "x-ai/grok-4.1-fast:free"
 ```
+
+**Available models include:**
+- OpenAI: GPT-5.1, GPT-5, GPT-4.1
+- Google: Gemini 3 Pro, Gemini 2.5 Pro, Gemini 2.5 Flash
+- Anthropic: Claude Sonnet 4.5, Claude Sonnet 4, Claude Haiku 4.5
+- xAI: Grok 4.1 Fast (Free), Grok 4 Fast, Grok 4, Grok Code Fast 1
+- Meta: Llama 4 Maverick, Llama 3.3 70B
+- DeepSeek: DeepSeek V3, DeepSeek R1
+- Mistral: Mistral Large
+
+You can also select models dynamically from the UI sidebar.
+
+### 4. Environment Variables (Optional)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENROUTER_API_KEY` | (required) | Your OpenRouter API key |
+| `ERROR_CLASSIFICATION_ENABLED` | `true` | Enable/disable automatic error cataloging |
 
 ## Running the Application
 
@@ -79,9 +120,68 @@ npm run dev
 
 Then open http://localhost:5173 in your browser.
 
+## Features
+
+### Real-Time Streaming
+Watch all council models generate their responses simultaneously in a grid view. Token-by-token streaming powered by Server-Sent Events.
+
+### Model Selection
+Use the sidebar to customize which models participate in the council and which model serves as chairman. Changes apply to your next query.
+
+### Response Times
+Each model response displays its generation time in milliseconds, helping you compare model latencies.
+
+### Conversation History
+All conversations are automatically saved and can be resumed later. Titles are auto-generated based on your first message.
+
+### Error Catalog
+Track factual errors across sessions. View error breakdowns by model and by error type to understand each model's strengths and weaknesses.
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/` | Health check |
+| `GET` | `/api/models` | Get available models and defaults |
+| `GET` | `/api/conversations` | List all conversations |
+| `POST` | `/api/conversations` | Create new conversation |
+| `GET` | `/api/conversations/{id}` | Get conversation with messages |
+| `POST` | `/api/conversations/{id}/message` | Send message (non-streaming) |
+| `POST` | `/api/conversations/{id}/message/stream` | Send message with SSE streaming |
+| `GET` | `/api/errors` | Get error catalog with summary |
+| `DELETE` | `/api/errors` | Clear error catalog |
+
 ## Tech Stack
 
-- **Backend:** FastAPI (Python 3.10+), async httpx, OpenRouter API
-- **Frontend:** React + Vite, react-markdown for rendering
-- **Storage:** JSON files in `data/conversations/`
+- **Backend:** FastAPI (Python 3.10+), async httpx, Pydantic, OpenRouter API
+- **Frontend:** React 19 + Vite 7, react-markdown for rendering
+- **Storage:** JSON files in `data/conversations/` and `data/error_catalog.json`
 - **Package Management:** uv for Python, npm for JavaScript
+
+## Project Structure
+
+```
+llm-council-fact-checker/
+├── backend/
+│   ├── main.py          # FastAPI app and routes
+│   ├── council.py       # 4-stage orchestration logic
+│   ├── openrouter.py    # OpenRouter API client
+│   ├── storage.py       # Conversation persistence
+│   ├── error_catalog.py # Error tracking
+│   └── config.py        # Models and settings
+├── frontend/
+│   └── src/
+│       ├── App.jsx              # Main app with streaming state
+│       ├── api.js               # Backend API client
+│       └── components/
+│           ├── ChatInterface.jsx   # Main chat view
+│           ├── Sidebar.jsx         # Navigation + model selector
+│           ├── StreamingGrid.jsx   # Real-time grid view
+│           ├── Stage1-4.jsx        # Stage result displays
+│           ├── FactCheck.jsx       # Fact-check visualization
+│           └── ErrorCatalog.jsx    # Error tracking view
+├── data/
+│   └── conversations/   # Saved conversation JSON files
+├── start.sh            # Launch both servers
+└── pyproject.toml      # Python dependencies
+```
