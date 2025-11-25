@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown';
+import { encode } from 'gpt-tokenizer';
 import './StreamingGrid.css';
 
 // Helper to get display name from model string
@@ -60,7 +61,7 @@ export default function StreamingGrid({
                 <span className="streaming-model-name">{displayName}</span>
                 {content && (
                   <span className="streaming-char-count">
-                    {content.length} chars
+                    {encode(content).length} tokens
                   </span>
                 )}
               </div>
