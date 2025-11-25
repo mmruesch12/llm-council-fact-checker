@@ -18,20 +18,23 @@ async def stage1_collect_responses(
         council_models: Optional list of model IDs to use (defaults to COUNCIL_MODELS)
 
     Returns:
-        List of dicts with 'model' and 'response' keys
+        List of dicts with 'model', 'instance', and 'response' keys.
+        For duplicate models, 'instance' distinguishes between them.
     """
     models = council_models if council_models else COUNCIL_MODELS
     messages = [{"role": "user", "content": user_query}]
 
-    # Query all models in parallel
+    # Query all models in parallel (handles duplicates)
     responses = await query_models_parallel(models, messages)
 
-    # Format results
+    # Format results - responses is now a list, not a dict
     stage1_results = []
-    for model, response in responses.items():
+    for item in responses:
+        response = item.get('response')
         if response is not None:  # Only include successful responses
             stage1_results.append({
-                "model": model,
+                "model": item['model'],
+                "instance": item['instance'],
                 "response": response.get('content', ''),
                 "response_time_ms": response.get('response_time_ms')
             })
@@ -43,7 +46,7 @@ async def stage2_fact_check(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
     council_models: List[str] = None
-) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]:
     """
     Stage 2: Each model fact-checks the other models' anonymized responses.
 
@@ -53,16 +56,20 @@ async def stage2_fact_check(
         council_models: Optional list of model IDs to use (defaults to COUNCIL_MODELS)
 
     Returns:
-        Tuple of (fact_check list, label_to_model mapping)
+        Tuple of (fact_check list, label_to_model mapping).
+        label_to_model maps "Response X" to {"model": model_id, "instance": instance_idx}
     """
     models = council_models if council_models else COUNCIL_MODELS
     # Create anonymized labels for responses (Response A, Response B, etc.)
     labels = [chr(65 + i) for i in range(len(stage1_results))]  # A, B, C, ...
 
-    # Create mapping from label to model name
+    # Create mapping from label to model info (includes instance for duplicates)
     label_to_model = {
-        f"Response {label}": result['model']
-        for label, result in zip(labels, stage1_results)
+        f"Response {label}": {
+            "model": result['model'],
+            "instance": result.get('instance', idx)
+        }
+        for idx, (label, result) in enumerate(zip(labels, stage1_results))
     }
 
     # Build the fact-checking prompt
@@ -109,14 +116,16 @@ Now provide your detailed fact-check analysis:"""
     # Get fact-checks from all council models in parallel
     responses = await query_models_parallel(models, messages)
 
-    # Format results
+    # Format results - responses is now a list
     fact_check_results = []
-    for model, response in responses.items():
+    for item in responses:
+        response = item.get('response')
         if response is not None:
             full_text = response.get('content', '')
             parsed = parse_fact_check_from_text(full_text)
             fact_check_results.append({
-                "model": model,
+                "model": item['model'],
+                "instance": item['instance'],
                 "fact_check": full_text,
                 "parsed_summary": parsed,
                 "response_time_ms": response.get('response_time_ms')
@@ -251,14 +260,16 @@ Now provide your evaluation and ranking:"""
     # Get rankings from all council models in parallel
     responses = await query_models_parallel(models, messages)
 
-    # Format results
+    # Format results - responses is now a list
     stage3_results = []
-    for model, response in responses.items():
+    for item in responses:
+        response = item.get('response')
         if response is not None:
             full_text = response.get('content', '')
             parsed = parse_ranking_from_text(full_text)
             stage3_results.append({
-                "model": model,
+                "model": item['model'],
+                "instance": item['instance'],
                 "ranking": full_text,
                 "parsed_ranking": parsed,
                 "response_time_ms": response.get('response_time_ms')
@@ -406,21 +417,22 @@ def parse_ranking_from_text(ranking_text: str) -> List[str]:
 
 def calculate_aggregate_rankings(
     stage2_results: List[Dict[str, Any]],
-    label_to_model: Dict[str, str]
+    label_to_model: Dict[str, Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
     """
     Calculate aggregate rankings across all models.
 
     Args:
         stage2_results: Rankings from each model
-        label_to_model: Mapping from anonymous labels to model names
+        label_to_model: Mapping from anonymous labels to {"model": model_id, "instance": idx}
 
     Returns:
-        List of dicts with model name and average rank, sorted best to worst
+        List of dicts with model info and average rank, sorted best to worst.
+        For duplicate models, each instance is tracked separately.
     """
     from collections import defaultdict
 
-    # Track positions for each model
+    # Track positions for each model instance (keyed by "model:instance")
     model_positions = defaultdict(list)
 
     for ranking in stage2_results:
@@ -431,16 +443,20 @@ def calculate_aggregate_rankings(
 
         for position, label in enumerate(parsed_ranking, start=1):
             if label in label_to_model:
-                model_name = label_to_model[label]
-                model_positions[model_name].append(position)
+                model_info = label_to_model[label]
+                # Create unique key for this model instance
+                instance_key = f"{model_info['model']}:{model_info['instance']}"
+                model_positions[instance_key].append(position)
 
-    # Calculate average position for each model
+    # Calculate average position for each model instance
     aggregate = []
-    for model, positions in model_positions.items():
+    for instance_key, positions in model_positions.items():
         if positions:
+            model_id, instance = instance_key.rsplit(':', 1)
             avg_rank = sum(positions) / len(positions)
             aggregate.append({
-                "model": model,
+                "model": model_id,
+                "instance": int(instance),
                 "average_rank": round(avg_rank, 2),
                 "rankings_count": len(positions)
             })
@@ -491,17 +507,18 @@ Title:"""
 
 def calculate_aggregate_fact_checks(
     fact_check_results: List[Dict[str, Any]],
-    label_to_model: Dict[str, str]
+    label_to_model: Dict[str, Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
     """
     Calculate aggregate fact-check ratings across all fact-checkers.
 
     Args:
         fact_check_results: Fact-checks from each model
-        label_to_model: Mapping from anonymous labels to model names
+        label_to_model: Mapping from anonymous labels to {"model": model_id, "instance": idx}
 
     Returns:
-        List of dicts with model name, consensus rating, and vote breakdown
+        List of dicts with model info, consensus rating, and vote breakdown.
+        For duplicate models, each instance is tracked separately.
     """
     from collections import defaultdict
 
@@ -514,7 +531,7 @@ def calculate_aggregate_fact_checks(
         "INACCURATE": 1
     }
 
-    # Track ratings and most_reliable votes for each model
+    # Track ratings and most_reliable votes for each model instance (keyed by "model:instance")
     model_ratings = defaultdict(list)
     most_reliable_votes = defaultdict(int)
 
@@ -526,18 +543,21 @@ def calculate_aggregate_fact_checks(
         # Collect ratings for each response
         for label, rating in ratings.items():
             if label in label_to_model:
-                model_name = label_to_model[label]
-                model_ratings[model_name].append(rating)
+                model_info = label_to_model[label]
+                instance_key = f"{model_info['model']}:{model_info['instance']}"
+                model_ratings[instance_key].append(rating)
 
         # Count most_reliable votes
         if most_reliable and most_reliable in label_to_model:
-            model_name = label_to_model[most_reliable]
-            most_reliable_votes[model_name] += 1
+            model_info = label_to_model[most_reliable]
+            instance_key = f"{model_info['model']}:{model_info['instance']}"
+            most_reliable_votes[instance_key] += 1
 
-    # Calculate aggregate for each model
+    # Calculate aggregate for each model instance
     aggregate = []
-    for model, ratings in model_ratings.items():
+    for instance_key, ratings in model_ratings.items():
         if ratings:
+            model_id, instance = instance_key.rsplit(':', 1)
             # Calculate average score
             scores = [rating_scores.get(r, 3) for r in ratings]
             avg_score = sum(scores) / len(scores)
@@ -555,11 +575,12 @@ def calculate_aggregate_fact_checks(
                 consensus = "INACCURATE"
 
             aggregate.append({
-                "model": model,
+                "model": model_id,
+                "instance": int(instance),
                 "consensus_rating": consensus,
                 "average_score": round(avg_score, 2),
                 "ratings_count": len(ratings),
-                "most_reliable_votes": most_reliable_votes.get(model, 0),
+                "most_reliable_votes": most_reliable_votes.get(instance_key, 0),
                 "rating_breakdown": ratings
             })
 
@@ -572,7 +593,7 @@ def calculate_aggregate_fact_checks(
 async def classify_errors(
     user_query: str,
     fact_check_results: List[Dict[str, Any]],
-    label_to_model: Dict[str, str],
+    label_to_model: Dict[str, Dict[str, Any]],
     chairman_model: str = None
 ) -> List[Dict[str, Any]]:
     """
@@ -581,7 +602,7 @@ async def classify_errors(
     Args:
         user_query: The original user query
         fact_check_results: Results from Stage 2 (fact-checking)
-        label_to_model: Mapping from labels to model names
+        label_to_model: Mapping from labels to {"model": model_id, "instance": idx}
         chairman_model: Optional chairman model ID (defaults to CHAIRMAN_MODEL)
 
     Returns:

@@ -3,14 +3,28 @@ import ReactMarkdown from 'react-markdown';
 import ResponseTime from './ResponseTime';
 import './FactCheck.css';
 
+// Helper to get display name from model info (handles both old string format and new {model, instance} format)
+function getModelDisplayName(modelInfo, includeInstance = false) {
+  if (!modelInfo) return null;
+  // Handle new format: {model: "...", instance: N}
+  if (typeof modelInfo === 'object' && modelInfo.model) {
+    const shortName = modelInfo.model.split('/')[1] || modelInfo.model;
+    return includeInstance && modelInfo.instance !== undefined
+      ? `${shortName} #${modelInfo.instance + 1}`
+      : shortName;
+  }
+  // Handle old format: just a string
+  return modelInfo.split('/')[1] || modelInfo;
+}
+
 function deAnonymizeText(text, labelToModel) {
   if (!labelToModel) return text;
 
   let result = text;
   // Replace each "Response X" with the actual model name
-  Object.entries(labelToModel).forEach(([label, model]) => {
-    const modelShortName = model.split('/')[1] || model;
-    result = result.replace(new RegExp(label, 'g'), `**${modelShortName}**`);
+  Object.entries(labelToModel).forEach(([label, modelInfo]) => {
+    const displayName = getModelDisplayName(modelInfo, true);
+    result = result.replace(new RegExp(label, 'g'), `**${displayName}**`);
   });
   return result;
 }
@@ -25,12 +39,30 @@ function getRatingClass(rating) {
   return '';
 }
 
+// Helper to check if there are duplicate models in the results
+function hasDuplicateModels(results) {
+  if (!results) return false;
+  const models = results.map(r => r.model);
+  return new Set(models).size !== models.length;
+}
+
+// Get display name for a fact-checker result
+function getFactCheckerDisplayName(fc, factChecks) {
+  const shortName = fc.model.split('/')[1] || fc.model;
+  if (hasDuplicateModels(factChecks) && fc.instance !== undefined) {
+    return `${shortName} #${fc.instance + 1}`;
+  }
+  return shortName;
+}
+
 export default function FactCheck({ factChecks, labelToModel, aggregateFactChecks }) {
   const [activeTab, setActiveTab] = useState(0);
 
   if (!factChecks || factChecks.length === 0) {
     return null;
   }
+
+  const showInstances = hasDuplicateModels(factChecks);
 
   return (
     <div className="stage fact-check">
@@ -49,6 +81,7 @@ export default function FactCheck({ factChecks, labelToModel, aggregateFactCheck
                 <span className="fact-position">#{index + 1}</span>
                 <span className="fact-model">
                   {agg.model.split('/')[1] || agg.model}
+                  {agg.instance !== undefined && ` #${agg.instance + 1}`}
                 </span>
                 <span className={`fact-rating ${getRatingClass(agg.consensus_rating)}`}>
                   {agg.consensus_rating}
@@ -80,7 +113,7 @@ export default function FactCheck({ factChecks, labelToModel, aggregateFactCheck
             className={`tab ${activeTab === index ? 'active' : ''}`}
             onClick={() => setActiveTab(index)}
           >
-            {fc.model.split('/')[1] || fc.model}
+            {getFactCheckerDisplayName(fc, factChecks)}
             {fc.response_time_ms && (
               <ResponseTime responseTimeMs={fc.response_time_ms} />
             )}
@@ -90,7 +123,11 @@ export default function FactCheck({ factChecks, labelToModel, aggregateFactCheck
 
       <div className="tab-content">
         <div className="fact-check-header">
-          <span className="fact-check-model">{factChecks[activeTab].model}</span>
+          <span className="fact-check-model">
+            {factChecks[activeTab].model}
+            {showInstances && factChecks[activeTab].instance !== undefined &&
+              ` (Instance #${factChecks[activeTab].instance + 1})`}
+          </span>
           <ResponseTime responseTimeMs={factChecks[activeTab].response_time_ms} />
         </div>
         <div className="fact-check-content markdown-content">
@@ -108,7 +145,7 @@ export default function FactCheck({ factChecks, labelToModel, aggregateFactCheck
                   <div key={label} className="summary-rating-item">
                     <span className="summary-label">
                       {labelToModel && labelToModel[label]
-                        ? labelToModel[label].split('/')[1] || labelToModel[label]
+                        ? getModelDisplayName(labelToModel[label], true)
                         : label}
                     </span>
                     <span className={`summary-rating ${getRatingClass(rating)}`}>
@@ -122,8 +159,7 @@ export default function FactCheck({ factChecks, labelToModel, aggregateFactCheck
               <div className="most-reliable">
                 <strong>Most Reliable:</strong>{' '}
                 {labelToModel && labelToModel[factChecks[activeTab].parsed_summary.most_reliable]
-                  ? labelToModel[factChecks[activeTab].parsed_summary.most_reliable].split('/')[1] ||
-                    labelToModel[factChecks[activeTab].parsed_summary.most_reliable]
+                  ? getModelDisplayName(labelToModel[factChecks[activeTab].parsed_summary.most_reliable], true)
                   : factChecks[activeTab].parsed_summary.most_reliable}
               </div>
             )}

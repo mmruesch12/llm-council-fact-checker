@@ -3,16 +3,46 @@ import ReactMarkdown from 'react-markdown';
 import ResponseTime from './ResponseTime';
 import './Stage2.css';
 
+// Helper to get display name from model info (handles both old string format and new {model, instance} format)
+function getModelDisplayName(modelInfo, includeInstance = false) {
+  if (!modelInfo) return null;
+  // Handle new format: {model: "...", instance: N}
+  if (typeof modelInfo === 'object' && modelInfo.model) {
+    const shortName = modelInfo.model.split('/')[1] || modelInfo.model;
+    return includeInstance && modelInfo.instance !== undefined
+      ? `${shortName} #${modelInfo.instance + 1}`
+      : shortName;
+  }
+  // Handle old format: just a string
+  return modelInfo.split('/')[1] || modelInfo;
+}
+
 function deAnonymizeText(text, labelToModel) {
   if (!labelToModel) return text;
 
   let result = text;
   // Replace each "Response X" with the actual model name
-  Object.entries(labelToModel).forEach(([label, model]) => {
-    const modelShortName = model.split('/')[1] || model;
-    result = result.replace(new RegExp(label, 'g'), `**${modelShortName}**`);
+  Object.entries(labelToModel).forEach(([label, modelInfo]) => {
+    const displayName = getModelDisplayName(modelInfo, true);
+    result = result.replace(new RegExp(label, 'g'), `**${displayName}**`);
   });
   return result;
+}
+
+// Helper to check if there are duplicate models in the results
+function hasDuplicateModels(results) {
+  if (!results) return false;
+  const models = results.map(r => r.model);
+  return new Set(models).size !== models.length;
+}
+
+// Get display name for a ranking result
+function getRankerDisplayName(rank, rankings) {
+  const shortName = rank.model.split('/')[1] || rank.model;
+  if (hasDuplicateModels(rankings) && rank.instance !== undefined) {
+    return `${shortName} #${rank.instance + 1}`;
+  }
+  return shortName;
 }
 
 export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
@@ -21,6 +51,8 @@ export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
   if (!rankings || rankings.length === 0) {
     return null;
   }
+
+  const showInstances = hasDuplicateModels(rankings);
 
   return (
     <div className="stage stage2">
@@ -39,7 +71,7 @@ export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
             className={`tab ${activeTab === index ? 'active' : ''}`}
             onClick={() => setActiveTab(index)}
           >
-            {rank.model.split('/')[1] || rank.model}
+            {getRankerDisplayName(rank, rankings)}
             {rank.response_time_ms && (
               <ResponseTime responseTimeMs={rank.response_time_ms} />
             )}
@@ -49,7 +81,11 @@ export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
 
       <div className="tab-content">
         <div className="ranking-header">
-          <span className="ranking-model">{rankings[activeTab].model}</span>
+          <span className="ranking-model">
+            {rankings[activeTab].model}
+            {showInstances && rankings[activeTab].instance !== undefined &&
+              ` (Instance #${rankings[activeTab].instance + 1})`}
+          </span>
           <ResponseTime responseTimeMs={rankings[activeTab].response_time_ms} />
         </div>
         <div className="ranking-content markdown-content">
@@ -66,7 +102,7 @@ export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
               {rankings[activeTab].parsed_ranking.map((label, i) => (
                 <li key={i}>
                   {labelToModel && labelToModel[label]
-                    ? labelToModel[label].split('/')[1] || labelToModel[label]
+                    ? getModelDisplayName(labelToModel[label], true)
                     : label}
                 </li>
               ))}
@@ -87,6 +123,7 @@ export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
                 <span className="rank-position">#{index + 1}</span>
                 <span className="rank-model">
                   {agg.model.split('/')[1] || agg.model}
+                  {agg.instance !== undefined && ` #${agg.instance + 1}`}
                 </span>
                 <span className="rank-score">
                   Avg: {agg.average_rank.toFixed(2)}

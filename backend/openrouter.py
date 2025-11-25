@@ -63,24 +63,32 @@ async def query_model(
 async def query_models_parallel(
     models: List[str],
     messages: List[Dict[str, str]]
-) -> Dict[str, Optional[Dict[str, Any]]]:
+) -> List[Dict[str, Any]]:
     """
     Query multiple models in parallel.
 
     Args:
-        models: List of OpenRouter model identifiers
+        models: List of OpenRouter model identifiers (may contain duplicates)
         messages: List of message dicts to send to each model
 
     Returns:
-        Dict mapping model identifier to response dict (or None if failed)
+        List of dicts, each containing 'model', 'instance' (index), and response data.
+        This preserves order and handles duplicate models correctly.
     """
     import asyncio
 
-    # Create tasks for all models
+    # Create tasks for all models (including duplicates)
     tasks = [query_model(model, messages) for model in models]
 
     # Wait for all to complete
     responses = await asyncio.gather(*tasks)
 
-    # Map models to their responses
-    return {model: response for model, response in zip(models, responses)}
+    # Return as list preserving order and including instance index
+    results = []
+    for idx, (model, response) in enumerate(zip(models, responses)):
+        results.append({
+            "model": model,
+            "instance": idx,
+            "response": response
+        })
+    return results
