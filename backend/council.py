@@ -3,7 +3,7 @@
 import json
 import asyncio
 from typing import List, Dict, Any, Tuple, Callable, AsyncGenerator
-from .openrouter import query_models_parallel, query_model, query_models_parallel_streaming
+from .openrouter import query_models_parallel, query_model, query_models_parallel_streaming, query_model_streaming
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL, ERROR_TYPES
 
 
@@ -931,6 +931,111 @@ Now provide your evaluation and ranking:"""
             })
 
     return stage3_results
+
+
+async def stage4_synthesize_final_streaming(
+    user_query: str,
+    stage1_results: List[Dict[str, Any]],
+    fact_check_results: List[Dict[str, Any]],
+    stage3_results: List[Dict[str, Any]],
+    label_to_model: Dict[str, str],
+    on_chunk: Callable[[str, int, str], None],
+    chairman_model: str = None
+) -> Dict[str, Any]:
+    """
+    Stage 4 with streaming: Chairman synthesizes final response with fact-check validation.
+
+    Args:
+        user_query: The original user query
+        stage1_results: Individual model responses from Stage 1
+        fact_check_results: Fact-checks from Stage 2
+        stage3_results: Rankings from Stage 3
+        label_to_model: Mapping from labels to model names
+        on_chunk: Async callback (model, instance, chunk_text) -> None
+        chairman_model: Optional chairman model ID (defaults to CHAIRMAN_MODEL)
+
+    Returns:
+        Dict with 'model', 'response', and 'response_time_ms' keys
+    """
+    chairman = chairman_model if chairman_model else CHAIRMAN_MODEL
+
+    # Build comprehensive context for chairman
+    stage1_text = "\n\n".join([
+        f"Model: {result['model']}\nResponse: {result['response']}"
+        for result in stage1_results
+    ])
+
+    fact_check_text = "\n\n".join([
+        f"Fact-checker ({result['model']}):\n{result['fact_check']}"
+        for result in fact_check_results
+    ])
+
+    stage3_text = "\n\n".join([
+        f"Model: {result['model']}\nRanking: {result['ranking']}"
+        for result in stage3_results
+    ])
+
+    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question. Then each model fact-checked each other's responses. Finally, each model ranked the responses taking the fact-checks into account.
+
+Original Question: {user_query}
+
+=== STAGE 1 - Individual Responses ===
+{stage1_text}
+
+=== STAGE 2 - Fact-Check Analyses ===
+{fact_check_text}
+
+=== STAGE 3 - Peer Rankings (Informed by Fact-Checks) ===
+{stage3_text}
+
+---
+
+Your task as Chairman is comprehensive. You must:
+
+1. **FACT-CHECK SYNTHESIS**: First, analyze all the fact-check reports. Identify:
+   - Claims that multiple fact-checkers agreed were ACCURATE
+   - Claims that multiple fact-checkers agreed were INACCURATE (these are confirmed errors)
+   - Claims where fact-checkers DISAGREED (these need your judgment)
+   - Any factual errors that were missed by some fact-checkers
+
+2. **FACT-CHECK VALIDATION**: Review the fact-checkers themselves. Did any fact-checker make errors in their fact-checking? Note any corrections needed.
+
+3. **FINAL ANSWER**: Synthesize all of this into a single, comprehensive, FACTUALLY ACCURATE answer to the user's question. Your answer should:
+   - Incorporate the best insights from all responses
+   - EXCLUDE or CORRECT any claims that were identified as inaccurate
+   - Note any areas of genuine uncertainty where fact-checkers disagreed
+   - Be clear about what is well-established fact vs. what is opinion or speculation
+
+Structure your response as follows:
+
+## Fact-Check Synthesis
+[Your analysis of the fact-checking results - what was confirmed accurate, what was confirmed inaccurate, and any disagreements]
+
+## Fact-Checker Validation
+[Any corrections to the fact-checkers themselves, or confirmation that their analyses were sound]
+
+## Final Council Answer
+[Your comprehensive, fact-checked answer to the user's question]
+
+Now provide your Chairman synthesis:"""
+
+    messages = [{"role": "user", "content": chairman_prompt}]
+
+    # Query the chairman model with streaming (instance 0 since single model)
+    response = await query_model_streaming(chairman, messages, 0, on_chunk)
+
+    if response is None:
+        return {
+            "model": chairman,
+            "response": "Error: Unable to generate final synthesis.",
+            "response_time_ms": None
+        }
+
+    return {
+        "model": chairman,
+        "response": response.get('content', ''),
+        "response_time_ms": response.get('response_time_ms')
+    }
 
 
 async def run_full_council(

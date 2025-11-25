@@ -21,6 +21,7 @@ from .council import (
     stage3_collect_rankings,
     stage3_collect_rankings_streaming,
     stage4_synthesize_final,
+    stage4_synthesize_final_streaming,
     calculate_aggregate_rankings,
     calculate_aggregate_fact_checks,
     classify_errors
@@ -289,9 +290,28 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             aggregate_rankings = calculate_aggregate_rankings(stage3_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_results, 'metadata': {'aggregate_rankings': aggregate_rankings}})}\n\n"
 
-            # Stage 4: Synthesize final answer (single model, no parallel streaming needed)
-            yield f"data: {json.dumps({'type': 'stage4_start'})}\n\n"
-            stage4_result = await stage4_synthesize_final(request.content, stage1_results, fact_check_results, stage3_results, label_to_model, request.chairman_model)
+            # Stage 4: Synthesize final answer with streaming
+            current_stage["stage"] = "stage4"
+            chairman = request.chairman_model if request.chairman_model else CHAIRMAN_MODEL
+            yield f"data: {json.dumps({'type': 'stage4_start', 'models': [chairman]})}\n\n"
+
+            stage4_done = asyncio.Event()
+
+            async def run_stage4():
+                result = await stage4_synthesize_final_streaming(
+                    request.content, stage1_results, fact_check_results,
+                    stage3_results, label_to_model, on_chunk, request.chairman_model
+                )
+                stage4_done.set()
+                return result
+
+            stage4_task = asyncio.create_task(run_stage4())
+
+            # Stream chunks while stage 4 runs
+            async for chunk_event in stream_chunks_until_done(stage4_done):
+                yield chunk_event
+
+            stage4_result = await stage4_task
             yield f"data: {json.dumps({'type': 'stage4_complete', 'data': stage4_result})}\n\n"
 
             # Classify and catalog any errors found during fact-checking (if enabled)

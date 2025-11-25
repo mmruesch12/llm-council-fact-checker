@@ -22,7 +22,8 @@ function getStageInfo(stage) {
   const stageMap = {
     stage1: { badge: '01', title: 'Individual Responses' },
     fact_check: { badge: '02', title: 'Fact-Checking' },
-    stage3: { badge: '03', title: 'Peer Rankings' }
+    stage3: { badge: '03', title: 'Peer Rankings' },
+    stage4: { badge: '04', title: 'Final Council Answer' }
   };
   return stageMap[stage] || { badge: '??', title: 'Unknown Stage' };
 }
@@ -235,10 +236,19 @@ export default function ChatInterface({
 
                   {/* Stage 4: Final Synthesis with Fact-Check Validation */}
                   {msg.loading?.stage4 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 4: Final synthesis with fact-check validation...</span>
-                    </div>
+                    showStreamingGrid && streamingState.currentStage === 'stage4' ? (
+                      <StreamingGrid
+                        models={streamingState.models}
+                        streamingContent={getStreamingContentArray('stage4')}
+                        stageName={stageInfo.badge}
+                        stageTitle={stageInfo.title}
+                      />
+                    ) : (
+                      <div className="stage-loading">
+                        <div className="spinner"></div>
+                        <span>Running Stage 4: Final synthesis with fact-check validation...</span>
+                      </div>
+                    )
                   )}
                   {msg.stage4 && (
                     <Accordion

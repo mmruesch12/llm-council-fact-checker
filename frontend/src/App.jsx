@@ -28,7 +28,8 @@ function App() {
     content: {
       stage1: {},     // { [instance]: "accumulated text" }
       fact_check: {},
-      stage3: {}
+      stage3: {},
+      stage4: {}
     }
   });
 
@@ -274,6 +275,13 @@ function App() {
             break;
 
           case 'stage4_start':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: true,
+              currentStage: 'stage4',
+              models: event.models || [chairmanModel],
+              content: { ...prev.content, stage4: {} }
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -282,7 +290,25 @@ function App() {
             });
             break;
 
+          case 'stage4_chunk':
+            setStreamingState(prev => ({
+              ...prev,
+              content: {
+                ...prev.content,
+                stage4: {
+                  ...prev.content.stage4,
+                  [event.instance]: (prev.content.stage4[event.instance] || '') + event.text
+                }
+              }
+            }));
+            break;
+
           case 'stage4_complete':
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: false,
+              currentStage: null
+            }));
             setCurrentConversation((prev) => {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
@@ -303,7 +329,7 @@ function App() {
               isStreaming: false,
               currentStage: null,
               models: [],
-              content: { stage1: {}, fact_check: {}, stage3: {} }
+              content: { stage1: {}, fact_check: {}, stage3: {}, stage4: {} }
             });
             loadConversations();
             setIsLoading(false);
@@ -315,7 +341,7 @@ function App() {
               isStreaming: false,
               currentStage: null,
               models: [],
-              content: { stage1: {}, fact_check: {}, stage3: {} }
+              content: { stage1: {}, fact_check: {}, stage3: {}, stage4: {} }
             });
             setIsLoading(false);
             break;

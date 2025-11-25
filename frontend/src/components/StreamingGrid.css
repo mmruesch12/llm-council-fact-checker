@@ -223,3 +223,7 @@
 .streaming-grid-container[data-stage="stage3"] .streaming-stage-badge {
   background: linear-gradient(135deg, #8b5cf6, #7c3aed);
 }
+
+.streaming-grid-container[data-stage="stage4"] .streaming-stage-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
