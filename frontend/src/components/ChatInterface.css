@@ -292,8 +292,8 @@
 .view-mode-toggle {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--glass-border);
   position: relative;
@@ -304,7 +304,8 @@
   font-size: 12px;
   color: var(--text-tertiary);
   font-weight: 500;
-  margin-right: var(--space-sm);
+  margin-right: var(--space-xs);
+  white-space: nowrap;
 }
 
 .toggle-btn {
@@ -340,6 +341,33 @@
 
 .toggle-btn.active svg {
   opacity: 1;
+}
+
+/* Toggle separator */
+.toggle-separator {
+  width: 1px;
+  height: 24px;
+  background: var(--glass-border);
+  margin: 0 var(--space-lg);
+  align-self: center;
+}
+
+/* Toggle groups for better organization */
+.toggle-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* Fact-checking toggle */
+.toggle-btn.fact-check-toggle.active {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.toggle-btn.fact-check-toggle:not(.active) {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
 }
 
 /* Cataloging Indicator */

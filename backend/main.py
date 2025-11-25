@@ -50,6 +50,7 @@ class SendMessageRequest(BaseModel):
     content: str
     council_models: List[str] = None
     chairman_model: str = None
+    fact_checking_enabled: bool = True
 
 
 class ConversationMetadata(BaseModel):
@@ -133,11 +134,12 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     stage1_results, fact_check_results, stage3_results, stage4_result, metadata = await run_full_council(
         request.content,
         request.council_models,
-        request.chairman_model
+        request.chairman_model,
+        request.fact_checking_enabled
     )
 
     # Classify and catalog any errors found during fact-checking (if enabled)
-    if ERROR_CLASSIFICATION_ENABLED:
+    if ERROR_CLASSIFICATION_ENABLED and request.fact_checking_enabled:
         classified_errors = await classify_errors(
             request.content,
             fact_check_results,
@@ -243,28 +245,42 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             stage1_results = await stage1_task
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
-            # Stage 2: Fact-check with streaming
-            current_stage["stage"] = "fact_check"
-            yield f"data: {json.dumps({'type': 'fact_check_start', 'models': models})}\n\n"
+            # Stage 2: Fact-check with streaming (optional)
+            if request.fact_checking_enabled:
+                current_stage["stage"] = "fact_check"
+                yield f"data: {json.dumps({'type': 'fact_check_start', 'models': models})}\n\n"
 
-            fact_check_done = asyncio.Event()
+                fact_check_done = asyncio.Event()
 
-            async def run_fact_check():
-                result = await stage2_fact_check_streaming(
-                    request.content, stage1_results, on_chunk, request.council_models
-                )
-                fact_check_done.set()
-                return result
+                async def run_fact_check():
+                    result = await stage2_fact_check_streaming(
+                        request.content, stage1_results, on_chunk, request.council_models
+                    )
+                    fact_check_done.set()
+                    return result
 
-            fact_check_task = asyncio.create_task(run_fact_check())
+                fact_check_task = asyncio.create_task(run_fact_check())
 
-            # Stream chunks while fact-check runs
-            async for chunk_event in stream_chunks_until_done(fact_check_done):
-                yield chunk_event
+                # Stream chunks while fact-check runs
+                async for chunk_event in stream_chunks_until_done(fact_check_done):
+                    yield chunk_event
 
-            fact_check_results, label_to_model = await fact_check_task
-            aggregate_fact_checks = calculate_aggregate_fact_checks(fact_check_results, label_to_model)
-            yield f"data: {json.dumps({'type': 'fact_check_complete', 'data': fact_check_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_fact_checks': aggregate_fact_checks}})}\n\n"
+                fact_check_results, label_to_model = await fact_check_task
+                aggregate_fact_checks = calculate_aggregate_fact_checks(fact_check_results, label_to_model)
+                yield f"data: {json.dumps({'type': 'fact_check_complete', 'data': fact_check_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_fact_checks': aggregate_fact_checks}})}\n\n"
+            else:
+                # Skip fact-checking stage
+                fact_check_results = []
+                # Create simple label mapping without fact-checking
+                labels = [chr(65 + i) for i in range(len(stage1_results))]  # A, B, C, ...
+                label_to_model = {
+                    f"Response {label}": {
+                        "model": result['model'],
+                        "instance": result.get('instance', idx)
+                    }
+                    for idx, (label, result) in enumerate(zip(labels, stage1_results))
+                }
+                aggregate_fact_checks = []
 
             # Stage 3: Collect rankings with streaming
             current_stage["stage"] = "stage3"
@@ -315,7 +331,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             yield f"data: {json.dumps({'type': 'stage4_complete', 'data': stage4_result})}\n\n"
 
             # Classify and catalog any errors found during fact-checking (if enabled)
-            if ERROR_CLASSIFICATION_ENABLED:
+            if ERROR_CLASSIFICATION_ENABLED and request.fact_checking_enabled:
                 yield f"data: {json.dumps({'type': 'cataloging_start'})}\n\n"
                 classified_errors = await classify_errors(
                     request.content,

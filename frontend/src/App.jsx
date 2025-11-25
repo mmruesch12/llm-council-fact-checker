@@ -17,6 +17,9 @@ function App() {
   const [councilModels, setCouncilModels] = useState([]);
   const [chairmanModel, setChairmanModel] = useState('');
 
+  // Fact-checking toggle state
+  const [factCheckingEnabled, setFactCheckingEnabled] = useState(true);
+
   // Streaming view mode: 'grid' for streaming quadrants, 'tabs' for traditional tab view
   const [streamingViewMode, setStreamingViewMode] = useState('grid');
 
@@ -134,6 +137,7 @@ function App() {
       const modelConfig = {
         councilModels: councilModels,
         chairmanModel: chairmanModel,
+        factCheckingEnabled: factCheckingEnabled,
       };
       await api.sendMessageStream(currentConversationId, content, (eventType, event) => {
         switch (eventType) {
@@ -410,6 +414,8 @@ function App() {
             streamingState={streamingState}
             streamingViewMode={streamingViewMode}
             onViewModeChange={setStreamingViewMode}
+            factCheckingEnabled={factCheckingEnabled}
+            onFactCheckingToggle={setFactCheckingEnabled}
           />
         </>
       ) : (

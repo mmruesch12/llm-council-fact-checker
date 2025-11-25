@@ -18,14 +18,24 @@ function formatTimestamp(timestamp) {
 }
 
 // Get stage info for display
-function getStageInfo(stage) {
-  const stageMap = {
-    stage1: { badge: '01', title: 'Individual Responses' },
-    fact_check: { badge: '02', title: 'Fact-Checking' },
-    stage3: { badge: '03', title: 'Peer Rankings' },
-    stage4: { badge: '04', title: 'Final Council Answer' }
-  };
-  return stageMap[stage] || { badge: '??', title: 'Unknown Stage' };
+function getStageInfo(stage, factCheckingEnabled = true) {
+  if (factCheckingEnabled) {
+    const stageMap = {
+      stage1: { badge: '01', title: 'Individual Responses' },
+      fact_check: { badge: '02', title: 'Fact-Checking' },
+      stage3: { badge: '03', title: 'Peer Rankings' },
+      stage4: { badge: '04', title: 'Final Council Answer' }
+    };
+    return stageMap[stage] || { badge: '??', title: 'Unknown Stage' };
+  } else {
+    // When fact-checking is disabled, adjust stage numbering
+    const stageMap = {
+      stage1: { badge: '01', title: 'Individual Responses' },
+      stage3: { badge: '02', title: 'Peer Rankings' },
+      stage4: { badge: '03', title: 'Final Council Answer' }
+    };
+    return stageMap[stage] || { badge: '??', title: 'Unknown Stage' };
+  }
 }
 
 export default function ChatInterface({
@@ -35,6 +45,8 @@ export default function ChatInterface({
   streamingState = { isStreaming: false, currentStage: null, models: [], content: {}, cataloging: { isActive: false, errorsCataloged: null } },
   streamingViewMode = 'grid',
   onViewModeChange = () => {},
+  factCheckingEnabled = true,
+  onFactCheckingToggle = () => {},
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -80,38 +92,64 @@ export default function ChatInterface({
     );
   }
 
-  const stageInfo = getStageInfo(streamingState.currentStage);
+  const stageInfo = getStageInfo(streamingState.currentStage, factCheckingEnabled);
   const showStreamingGrid = streamingState.isStreaming && streamingViewMode === 'grid';
 
   return (
     <div className="chat-interface">
-      {/* View Mode Toggle */}
+      {/* View Mode and Fact-Checking Toggles */}
       <div className="view-mode-toggle">
-        <span className="toggle-label">View Mode:</span>
-        <button
-          className={`toggle-btn ${streamingViewMode === 'grid' ? 'active' : ''}`}
-          onClick={() => onViewModeChange('grid')}
-          title="Show streaming responses in a grid layout"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <rect x="1" y="1" width="6" height="6" rx="1" />
-            <rect x="9" y="1" width="6" height="6" rx="1" />
-            <rect x="1" y="9" width="6" height="6" rx="1" />
-            <rect x="9" y="9" width="6" height="6" rx="1" />
-          </svg>
-          Grid
-        </button>
-        <button
-          className={`toggle-btn ${streamingViewMode === 'tabs' ? 'active' : ''}`}
-          onClick={() => onViewModeChange('tabs')}
-          title="Show responses in traditional tab layout"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <rect x="1" y="1" width="14" height="4" rx="1" />
-            <rect x="1" y="7" width="14" height="8" rx="1" />
-          </svg>
-          Tabs
-        </button>
+        <div className="toggle-group">
+          <span className="toggle-label">View Mode:</span>
+          <button
+            className={`toggle-btn ${streamingViewMode === 'grid' ? 'active' : ''}`}
+            onClick={() => onViewModeChange('grid')}
+            title="Show streaming responses in a grid layout"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="1" y="1" width="6" height="6" rx="1" />
+              <rect x="9" y="1" width="6" height="6" rx="1" />
+              <rect x="1" y="9" width="6" height="6" rx="1" />
+              <rect x="9" y="9" width="6" height="6" rx="1" />
+            </svg>
+            Grid
+          </button>
+          <button
+            className={`toggle-btn ${streamingViewMode === 'tabs' ? 'active' : ''}`}
+            onClick={() => onViewModeChange('tabs')}
+            title="Show responses in traditional tab layout"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="1" y="1" width="14" height="4" rx="1" />
+              <rect x="1" y="7" width="14" height="8" rx="1" />
+            </svg>
+            Tabs
+          </button>
+        </div>
+
+        <div className="toggle-separator"></div>
+
+        <div className="toggle-group">
+          <span className="toggle-label">Fact-Checking:</span>
+          <button
+            className={`toggle-btn fact-check-toggle ${factCheckingEnabled ? 'active' : ''}`}
+            onClick={() => onFactCheckingToggle(!factCheckingEnabled)}
+            title={factCheckingEnabled ? "Fact-checking is enabled (4 stages)" : "Fact-checking is disabled (3 stages)"}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              {factCheckingEnabled ? (
+                <>
+                  <path d="M7 2.75a.75.75 0 01.75-.75h.5a.75.75 0 01.75.75v3.5a.75.75 0 01-.75.75h-.5a.75.75 0 01-.75-.75v-3.5z"/>
+                  <path d="M8 10a2 2 0 100-4 2 2 0 000 4z"/>
+                  <path d="M8 14A6 6 0 108 2a6 6 0 000 12zm0-1.5A4.5 4.5 0 118 3.5a4.5 4.5 0 010 9z"/>
+                </>
+              ) : (
+                <path d="M8 14A6 6 0 108 2a6 6 0 000 12zm0-1.5A4.5 4.5 0 118 3.5a4.5 4.5 0 010 9z"/>
+              )}
+            </svg>
+            {factCheckingEnabled ? 'Enabled' : 'Disabled'}
+          </button>
+        </div>
       </div>
 
       <div className="messages-container">
@@ -203,7 +241,7 @@ export default function ChatInterface({
                     </Accordion>
                   )}
 
-                  {/* Stage 3: Peer Rankings (informed by fact-checks) */}
+                  {/* Stage 3: Peer Rankings */}
                   {msg.loading?.stage3 && (
                     showStreamingGrid && streamingState.currentStage === 'stage3' ? (
                       <StreamingGrid
@@ -215,14 +253,17 @@ export default function ChatInterface({
                     ) : (
                       <div className="stage-loading">
                         <div className="spinner"></div>
-                        <span>Running Stage 3: Peer rankings (informed by fact-checks)...</span>
+                        <span>
+                          Running Stage {factCheckingEnabled ? '3' : '2'}: Peer rankings
+                          {factCheckingEnabled && ' (informed by fact-checks)'}...
+                        </span>
                       </div>
                     )
                   )}
                   {msg.stage3 && (
                     <Accordion
                       title="Peer Rankings"
-                      badge="03"
+                      badge={factCheckingEnabled ? "03" : "02"}
                       variant="rankings"
                       defaultExpanded={false}
                     >
@@ -234,7 +275,7 @@ export default function ChatInterface({
                     </Accordion>
                   )}
 
-                  {/* Stage 4: Final Synthesis with Fact-Check Validation */}
+                  {/* Stage 4: Final Synthesis */}
                   {msg.loading?.stage4 && (
                     showStreamingGrid && streamingState.currentStage === 'stage4' ? (
                       <StreamingGrid
@@ -246,14 +287,17 @@ export default function ChatInterface({
                     ) : (
                       <div className="stage-loading">
                         <div className="spinner"></div>
-                        <span>Running Stage 4: Final synthesis with fact-check validation...</span>
+                        <span>
+                          Running Stage {factCheckingEnabled ? '4' : '3'}: Final synthesis
+                          {factCheckingEnabled && ' with fact-check validation'}...
+                        </span>
                       </div>
                     )
                   )}
                   {msg.stage4 && (
                     <Accordion
                       title="Final Council Answer"
-                      badge="04"
+                      badge={factCheckingEnabled ? "04" : "03"}
                       variant="final"
                       defaultExpanded={true}
                     >

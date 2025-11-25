@@ -121,6 +121,9 @@ export const api = {
           content,
           council_models: modelConfig.councilModels || null,
           chairman_model: modelConfig.chairmanModel || null,
+          fact_checking_enabled: modelConfig.factCheckingEnabled !== undefined
+            ? modelConfig.factCheckingEnabled
+            : true,
         }),
       }
     );

@@ -211,13 +211,15 @@ async def stage3_collect_rankings(
         for label, result in zip(labels, stage1_results)
     ])
 
-    # Summarize fact-check findings
-    fact_check_summary = "\n\n".join([
-        f"Fact-checker {i+1}:\n{result['fact_check']}"
-        for i, result in enumerate(fact_check_results)
-    ])
+    # Build ranking prompt (with or without fact-check context)
+    if fact_check_results:
+        # Summarize fact-check findings
+        fact_check_summary = "\n\n".join([
+            f"Fact-checker {i+1}:\n{result['fact_check']}"
+            for i, result in enumerate(fact_check_results)
+        ])
 
-    ranking_prompt = f"""You are evaluating different responses to the following question:
+        ranking_prompt = f"""You are evaluating different responses to the following question:
 
 Question: {user_query}
 
@@ -239,7 +241,25 @@ Your task:
    - Factual accuracy (as revealed by the fact-checks)
    - Completeness and helpfulness
    - Clarity and reasoning
-3. Then, at the very end of your response, provide a final ranking.
+3. Then, at the very end of your response, provide a final ranking."""
+    else:
+        # No fact-checking, evaluate based on quality alone
+        ranking_prompt = f"""You are evaluating different responses to the following question:
+
+Question: {user_query}
+
+Here are the responses from different models (anonymized):
+
+{responses_text}
+
+---
+
+Your task:
+1. Evaluate each response individually, taking into account:
+   - Apparent factual accuracy (based on your knowledge)
+   - Completeness and helpfulness
+   - Clarity and reasoning
+2. Then, at the very end of your response, provide a final ranking.
 
 IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
 - Start with the line "FINAL RANKING:" (all caps, with colon)
@@ -308,17 +328,19 @@ async def stage4_synthesize_final(
         for result in stage1_results
     ])
 
-    fact_check_text = "\n\n".join([
-        f"Fact-checker ({result['model']}):\n{result['fact_check']}"
-        for result in fact_check_results
-    ])
-
     stage3_text = "\n\n".join([
         f"Model: {result['model']}\nRanking: {result['ranking']}"
         for result in stage3_results
     ])
 
-    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question. Then each model fact-checked each other's responses. Finally, each model ranked the responses taking the fact-checks into account.
+    if fact_check_results:
+        # With fact-checking
+        fact_check_text = "\n\n".join([
+            f"Fact-checker ({result['model']}):\n{result['fact_check']}"
+            for result in fact_check_results
+        ])
+
+        chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question. Then each model fact-checked each other's responses. Finally, each model ranked the responses taking the fact-checks into account.
 
 Original Question: {user_query}
 
@@ -329,7 +351,22 @@ Original Question: {user_query}
 {fact_check_text}
 
 === STAGE 3 - Peer Rankings (Informed by Fact-Checks) ===
-{stage3_text}
+{stage3_text}"""
+    else:
+        # Without fact-checking
+        chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question. Each model has then evaluated and ranked all the responses.
+
+Original Question: {user_query}
+
+=== STAGE 1 - Individual Responses ===
+{stage1_text}
+
+=== STAGE 2 - Peer Rankings ===
+{stage3_text}"""
+
+    # Add task description based on whether fact-checking was done
+    if fact_check_results:
+        chairman_prompt += """
 
 ---
 
@@ -359,6 +396,36 @@ Structure your response as follows:
 
 ## Final Council Answer
 [Your comprehensive, fact-checked answer to the user's question]
+
+Now provide your Chairman synthesis:"""
+    else:
+        # Without fact-checking, simpler synthesis
+        chairman_prompt += """
+
+---
+
+Your task as Chairman is to synthesize the council's responses and rankings. You must:
+
+1. **RANKING ANALYSIS**: Review the peer rankings provided by each model. Identify:
+   - Which responses were consistently ranked highly
+   - Any significant disagreements in the rankings
+   - The reasoning behind the evaluations
+
+2. **SYNTHESIS**: Create a comprehensive answer that:
+   - Incorporates the best insights from all responses
+   - Prioritizes information from higher-ranked responses
+   - Combines complementary perspectives
+   - Resolves any contradictions based on your judgment
+
+3. **FINAL ANSWER**: Provide a clear, comprehensive answer to the user's question.
+
+Structure your response as follows:
+
+## Ranking Analysis
+[Your analysis of the peer rankings and which responses were considered strongest]
+
+## Final Council Answer
+[Your comprehensive, synthesized answer to the user's question]
 
 Now provide your Chairman synthesis:"""
 
@@ -965,17 +1032,19 @@ async def stage4_synthesize_final_streaming(
         for result in stage1_results
     ])
 
-    fact_check_text = "\n\n".join([
-        f"Fact-checker ({result['model']}):\n{result['fact_check']}"
-        for result in fact_check_results
-    ])
-
     stage3_text = "\n\n".join([
         f"Model: {result['model']}\nRanking: {result['ranking']}"
         for result in stage3_results
     ])
 
-    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question. Then each model fact-checked each other's responses. Finally, each model ranked the responses taking the fact-checks into account.
+    if fact_check_results:
+        # With fact-checking
+        fact_check_text = "\n\n".join([
+            f"Fact-checker ({result['model']}):\n{result['fact_check']}"
+            for result in fact_check_results
+        ])
+
+        chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question. Then each model fact-checked each other's responses. Finally, each model ranked the responses taking the fact-checks into account.
 
 Original Question: {user_query}
 
@@ -986,7 +1055,22 @@ Original Question: {user_query}
 {fact_check_text}
 
 === STAGE 3 - Peer Rankings (Informed by Fact-Checks) ===
-{stage3_text}
+{stage3_text}"""
+    else:
+        # Without fact-checking
+        chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question. Each model has then evaluated and ranked all the responses.
+
+Original Question: {user_query}
+
+=== STAGE 1 - Individual Responses ===
+{stage1_text}
+
+=== STAGE 2 - Peer Rankings ===
+{stage3_text}"""
+
+    # Add task description based on whether fact-checking was done
+    if fact_check_results:
+        chairman_prompt += """
 
 ---
 
@@ -1018,6 +1102,36 @@ Structure your response as follows:
 [Your comprehensive, fact-checked answer to the user's question]
 
 Now provide your Chairman synthesis:"""
+    else:
+        # Without fact-checking, simpler synthesis
+        chairman_prompt += """
+
+---
+
+Your task as Chairman is to synthesize the council's responses and rankings. You must:
+
+1. **RANKING ANALYSIS**: Review the peer rankings provided by each model. Identify:
+   - Which responses were consistently ranked highly
+   - Any significant disagreements in the rankings
+   - The reasoning behind the evaluations
+
+2. **SYNTHESIS**: Create a comprehensive answer that:
+   - Incorporates the best insights from all responses
+   - Prioritizes information from higher-ranked responses
+   - Combines complementary perspectives
+   - Resolves any contradictions based on your judgment
+
+3. **FINAL ANSWER**: Provide a clear, comprehensive answer to the user's question.
+
+Structure your response as follows:
+
+## Ranking Analysis
+[Your analysis of the peer rankings and which responses were considered strongest]
+
+## Final Council Answer
+[Your comprehensive, synthesized answer to the user's question]
+
+Now provide your Chairman synthesis:"""
 
     messages = [{"role": "user", "content": chairman_prompt}]
 
@@ -1041,7 +1155,8 @@ Now provide your Chairman synthesis:"""
 async def run_full_council(
     user_query: str,
     council_models: List[str] = None,
-    chairman_model: str = None
+    chairman_model: str = None,
+    fact_checking_enabled: bool = True
 ) -> Tuple[List, List, List, Dict, Dict]:
     """
     Run the complete 4-stage council process.
@@ -1064,13 +1179,26 @@ async def run_full_council(
             "response": "All models failed to respond. Please try again."
         }, {}
 
-    # Stage 2: Fact-check each other's responses
-    fact_check_results, label_to_model = await stage2_fact_check(user_query, stage1_results, council_models)
+    # Stage 2: Fact-check each other's responses (optional)
+    if fact_checking_enabled:
+        fact_check_results, label_to_model = await stage2_fact_check(user_query, stage1_results, council_models)
+        # Calculate aggregate fact-check ratings
+        aggregate_fact_checks = calculate_aggregate_fact_checks(fact_check_results, label_to_model)
+    else:
+        # Skip fact-checking stage
+        fact_check_results = []
+        # Create simple label mapping without fact-checking
+        labels = [chr(65 + i) for i in range(len(stage1_results))]  # A, B, C, ...
+        label_to_model = {
+            f"Response {label}": {
+                "model": result['model'],
+                "instance": result.get('instance', idx)
+            }
+            for idx, (label, result) in enumerate(zip(labels, stage1_results))
+        }
+        aggregate_fact_checks = []
 
-    # Calculate aggregate fact-check ratings
-    aggregate_fact_checks = calculate_aggregate_fact_checks(fact_check_results, label_to_model)
-
-    # Stage 3: Collect rankings (informed by fact-checks)
+    # Stage 3: Collect rankings (informed by fact-checks if enabled)
     stage3_results = await stage3_collect_rankings(
         user_query, stage1_results, fact_check_results, label_to_model, council_models
     )
@@ -1092,7 +1220,8 @@ async def run_full_council(
     metadata = {
         "label_to_model": label_to_model,
         "aggregate_fact_checks": aggregate_fact_checks,
-        "aggregate_rankings": aggregate_rankings
+        "aggregate_rankings": aggregate_rankings,
+        "fact_checking_enabled": fact_checking_enabled
     }
 
     return stage1_results, fact_check_results, stage3_results, stage4_result, metadata
