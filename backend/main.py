@@ -41,12 +41,11 @@ cors_origins = [
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
     cors_origins.append(frontend_url)
-# Allow any Render.com subdomain for flexibility
-cors_origins.append("https://*.onrender.com")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    # Allow any Render.com subdomain for flexibility via regex
     allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
