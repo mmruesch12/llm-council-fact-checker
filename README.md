@@ -168,6 +168,59 @@ Track factual errors across sessions. View error breakdowns by model and by erro
 - **Frontend:** React 19 + Vite 7, react-markdown for rendering
 - **Storage:** JSON files in `data/conversations/` and `data/error_catalog.json`
 - **Package Management:** uv for Python, npm for JavaScript
+- **Deployment:** Render.com (see Deployment section below)
+
+## Deployment to Render
+
+This repository includes a `render.yaml` blueprint for easy deployment to [Render.com](https://render.com).
+
+### Quick Deploy
+
+1. **Fork this repository** to your own GitHub account
+
+2. **Create a new Blueprint** on Render:
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Click "New" → "Blueprint"
+   - Connect your GitHub repository
+   - Render will automatically detect `render.yaml`
+
+3. **Set the OPENROUTER_API_KEY secret**:
+   - After the blueprint is created, go to the `llm-council-api` service
+   - Navigate to "Environment" tab
+   - Add your `OPENROUTER_API_KEY` value (marked as `sync: false` for security)
+
+4. **Deploy** - Render will automatically build and deploy both services
+
+### Services Created
+
+The blueprint creates two services:
+
+| Service | Type | URL |
+|---------|------|-----|
+| `llm-council-api` | Web Service (Python) | `https://llm-council-api.onrender.com` |
+| `llm-council-frontend` | Static Site | `https://llm-council-frontend.onrender.com` |
+
+### Environment Variables
+
+#### Backend (`llm-council-api`)
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENROUTER_API_KEY` | Yes | Your OpenRouter API key (set manually in Render dashboard) |
+| `PYTHON_VERSION` | No | Python version (defaults to 3.11) |
+| `ERROR_CLASSIFICATION_ENABLED` | No | Enable error cataloging (defaults to true) |
+| `FRONTEND_URL` | No | Frontend URL for CORS (auto-configured in blueprint) |
+
+#### Frontend (`llm-council-frontend`)
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_API_URL` | Yes | Backend API URL (auto-configured in blueprint) |
+
+### Custom Domain
+
+To use a custom domain:
+1. Add your domain in the Render dashboard for each service
+2. Update the `FRONTEND_URL` environment variable on the backend
+3. Update the `VITE_API_URL` environment variable on the frontend (requires rebuild)
 
 ## Project Structure
 
@@ -193,8 +246,10 @@ llm-council-fact-checker/
 │           └── ErrorCatalog.jsx    # Error tracking view
 ├── data/
 │   └── conversations/   # Saved conversation JSON files
-├── start.sh            # Launch both servers
-└── pyproject.toml      # Python dependencies
+├── render.yaml          # Render.com deployment blueprint
+├── requirements.txt     # Python dependencies for deployment
+├── start.sh             # Launch both servers locally
+└── pyproject.toml       # Python project configuration
 ```
 
 ## Credits
