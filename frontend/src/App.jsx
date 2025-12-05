@@ -7,6 +7,12 @@ import { useAuth } from './contexts/AuthContext';
 import { api } from './api';
 import './App.css';
 
+// Local storage keys for model persistence (defined outside component to avoid re-creation)
+const STORAGE_KEYS = {
+  councilModels: 'llm-council-selected-council-models',
+  chairmanModel: 'llm-council-selected-chairman-model',
+};
+
 function App() {
   const { user, authEnabled, loading: authLoading } = useAuth();
   const [conversations, setConversations] = useState([]);
@@ -26,12 +32,6 @@ function App() {
 
   // Streaming view mode: 'grid' for streaming quadrants, 'tabs' for traditional tab view
   const [streamingViewMode, setStreamingViewMode] = useState('grid');
-
-  // Local storage keys for model persistence
-  const STORAGE_KEYS = {
-    councilModels: 'llm-council-selected-council-models',
-    chairmanModel: 'llm-council-selected-chairman-model',
-  };
 
   // Streaming state for live parallel responses
   const [streamingState, setStreamingState] = useState({
@@ -101,7 +101,7 @@ function App() {
     if (user && (!user.auth_disabled || !authEnabled)) {
       loadData();
     }
-  }, [user, authEnabled, STORAGE_KEYS.councilModels, STORAGE_KEYS.chairmanModel]);
+  }, [user, authEnabled]);
 
   // Load conversation details when selected
   useEffect(() => {
@@ -123,14 +123,14 @@ function App() {
     if (modelsLoaded && councilModels.length > 0) {
       localStorage.setItem(STORAGE_KEYS.councilModels, JSON.stringify(councilModels));
     }
-  }, [councilModels, modelsLoaded, STORAGE_KEYS.councilModels]);
+  }, [councilModels, modelsLoaded]);
 
   // Persist chairman model to localStorage when changed
   useEffect(() => {
     if (modelsLoaded && chairmanModel) {
       localStorage.setItem(STORAGE_KEYS.chairmanModel, chairmanModel);
     }
-  }, [chairmanModel, modelsLoaded, STORAGE_KEYS.chairmanModel]);
+  }, [chairmanModel, modelsLoaded]);
 
   const loadConversations = async () => {
     try {

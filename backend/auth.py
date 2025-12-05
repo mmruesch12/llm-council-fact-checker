@@ -5,12 +5,12 @@ from fastapi.responses import RedirectResponse
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from itsdangerous import URLSafeTimedSerializer, BadSignature
 from typing import Optional
-import json
 
 from .config import (
     GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET,
     SESSION_SECRET_KEY,
+    SESSION_COOKIE_SECURE,
     ALLOWED_GITHUB_USERS,
     FRONTEND_URL,
 )
@@ -105,7 +105,7 @@ async def login(request: Request):
         key="oauth_state",
         value=state,
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=SESSION_COOKIE_SECURE,
         samesite="lax",
         max_age=600  # 10 minutes
     )
@@ -145,7 +145,7 @@ async def oauth_callback(request: Request, code: str = None, state: str = None, 
             code=code,
             redirect_uri=callback_url,
         )
-    except Exception as e:
+    except Exception:
         return RedirectResponse(url=f"{FRONTEND_URL}?auth_error=token_exchange_failed")
     
     # Fetch user info
@@ -153,7 +153,7 @@ async def oauth_callback(request: Request, code: str = None, state: str = None, 
         client.token = token
         resp = await client.get(GITHUB_USER_URL)
         user_data = resp.json()
-    except Exception as e:
+    except Exception:
         return RedirectResponse(url=f"{FRONTEND_URL}?auth_error=user_fetch_failed")
     
     github_username = user_data.get("login")
@@ -175,7 +175,7 @@ async def oauth_callback(request: Request, code: str = None, state: str = None, 
         key=SESSION_COOKIE_NAME,
         value=create_session_cookie(session_data),
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=SESSION_COOKIE_SECURE,
         samesite="lax",
         max_age=SESSION_MAX_AGE
     )

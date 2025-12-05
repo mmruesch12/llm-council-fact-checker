@@ -1,6 +1,7 @@
 """Configuration for the LLM Council."""
 
 import os
+import secrets
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,8 +13,12 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 
-# Secret key for session signing (generate a random one if not provided)
-SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "change-me-in-production")
+# Secret key for session signing
+# Generate a random key if not provided (note: sessions won't persist across restarts)
+SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY") or secrets.token_hex(32)
+
+# Whether to use secure cookies (should be True in production with HTTPS)
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
 
 # Allowed GitHub usernames (comma-separated list in env var)
 # If empty or not set, authentication is disabled
