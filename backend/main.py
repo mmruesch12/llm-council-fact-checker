@@ -1,6 +1,6 @@
 """FastAPI backend for LLM Council."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ import json
 import asyncio
 
 from . import storage
-from .config import AVAILABLE_MODELS, COUNCIL_MODELS, CHAIRMAN_MODEL, ERROR_CLASSIFICATION_ENABLED
+from .config import AVAILABLE_MODELS, COUNCIL_MODELS, CHAIRMAN_MODEL, ERROR_CLASSIFICATION_ENABLED, FRONTEND_URL
 from .council import (
     run_full_council,
     generate_conversation_title,
@@ -27,17 +27,21 @@ from .council import (
     classify_errors
 )
 from . import error_catalog
+from .auth import router as auth_router, require_auth, is_auth_enabled, get_current_user
 
 app = FastAPI(title="LLM Council API")
 
 # Enable CORS for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:5173", "http://localhost:3000", FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include auth router
+app.include_router(auth_router)
 
 
 class CreateConversationRequest(BaseModel):
@@ -69,6 +73,13 @@ class Conversation(BaseModel):
     messages: List[Dict[str, Any]]
 
 
+async def optional_auth(request: Request) -> dict:
+    """Optional authentication - only enforced if auth is enabled."""
+    if is_auth_enabled():
+        return await require_auth(request)
+    return {"login": "anonymous", "auth_disabled": True}
+
+
 @app.get("/")
 async def root():
     """Health check endpoint."""
@@ -76,7 +87,7 @@ async def root():
 
 
 @app.get("/api/models")
-async def get_models():
+async def get_models(user: dict = Depends(optional_auth)):
     """Get available models and default configuration."""
     return {
         "available_models": AVAILABLE_MODELS,
@@ -86,13 +97,13 @@ async def get_models():
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
-async def list_conversations():
+async def list_conversations(user: dict = Depends(optional_auth)):
     """List all conversations (metadata only)."""
     return storage.list_conversations()
 
 
 @app.post("/api/conversations", response_model=Conversation)
-async def create_conversation(request: CreateConversationRequest):
+async def create_conversation(request: CreateConversationRequest, user: dict = Depends(optional_auth)):
     """Create a new conversation."""
     conversation_id = str(uuid.uuid4())
     conversation = storage.create_conversation(conversation_id)
@@ -100,7 +111,7 @@ async def create_conversation(request: CreateConversationRequest):
 
 
 @app.get("/api/conversations/{conversation_id}", response_model=Conversation)
-async def get_conversation(conversation_id: str):
+async def get_conversation(conversation_id: str, user: dict = Depends(optional_auth)):
     """Get a specific conversation with all its messages."""
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
@@ -109,7 +120,7 @@ async def get_conversation(conversation_id: str):
 
 
 @app.post("/api/conversations/{conversation_id}/message")
-async def send_message(conversation_id: str, request: SendMessageRequest):
+async def send_message(conversation_id: str, request: SendMessageRequest, user: dict = Depends(optional_auth)):
     """
     Send a message and run the 4-stage council process.
     Returns the complete response with all stages.
@@ -171,7 +182,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
 
 @app.post("/api/conversations/{conversation_id}/message/stream")
-async def send_message_stream(conversation_id: str, request: SendMessageRequest):
+async def send_message_stream(conversation_id: str, request: SendMessageRequest, user: dict = Depends(optional_auth)):
     """
     Send a message and stream the 4-stage council process.
     Returns Server-Sent Events as each stage completes.
@@ -382,7 +393,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
 
 @app.get("/api/errors")
-async def get_errors():
+async def get_errors(user: dict = Depends(optional_auth)):
     """Get all cataloged errors with summary statistics."""
     return {
         "errors": error_catalog.get_all_errors(),
@@ -391,7 +402,7 @@ async def get_errors():
 
 
 @app.delete("/api/errors")
-async def clear_errors():
+async def clear_errors(user: dict = Depends(optional_auth)):
     """Clear all cataloged errors."""
     error_catalog.save_catalog({"errors": []})
     return {"status": "ok", "message": "Error catalog cleared"}

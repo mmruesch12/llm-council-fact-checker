@@ -6,11 +6,59 @@ const API_BASE = 'http://localhost:8001';
 
 export const api = {
   /**
+   * Check authentication status.
+   */
+  async getAuthStatus() {
+    const response = await fetch(`${API_BASE}/auth/status`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to get auth status');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get current authenticated user.
+   */
+  async getCurrentUser() {
+    const response = await fetch(`${API_BASE}/auth/me`, {
+      credentials: 'include',
+    });
+    if (response.status === 401) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error('Failed to get current user');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get the login URL.
+   */
+  getLoginUrl() {
+    return `${API_BASE}/auth/login`;
+  },
+
+  /**
+   * Get the logout URL.
+   */
+  getLogoutUrl() {
+    return `${API_BASE}/auth/logout`;
+  },
+
+  /**
    * Get available models and default configuration.
    */
   async getModels() {
-    const response = await fetch(`${API_BASE}/api/models`);
+    const response = await fetch(`${API_BASE}/api/models`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
       throw new Error('Failed to get models');
     }
     return response.json();
@@ -20,8 +68,13 @@ export const api = {
    * List all conversations.
    */
   async listConversations() {
-    const response = await fetch(`${API_BASE}/api/conversations`);
+    const response = await fetch(`${API_BASE}/api/conversations`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
       throw new Error('Failed to list conversations');
     }
     return response.json();
@@ -36,9 +89,13 @@ export const api = {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({}),
     });
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
       throw new Error('Failed to create conversation');
     }
     return response.json();
@@ -49,9 +106,15 @@ export const api = {
    */
   async getConversation(conversationId) {
     const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}`
+      `${API_BASE}/api/conversations/${conversationId}`,
+      {
+        credentials: 'include',
+      }
     );
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
       throw new Error('Failed to get conversation');
     }
     return response.json();
@@ -68,10 +131,14 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ content }),
       }
     );
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
       throw new Error('Failed to send message');
     }
     return response.json();
@@ -81,8 +148,13 @@ export const api = {
    * Get all cataloged errors with summary statistics.
    */
   async getErrors() {
-    const response = await fetch(`${API_BASE}/api/errors`);
+    const response = await fetch(`${API_BASE}/api/errors`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
       throw new Error('Failed to get errors');
     }
     return response.json();
@@ -94,8 +166,12 @@ export const api = {
   async clearErrors() {
     const response = await fetch(`${API_BASE}/api/errors`, {
       method: 'DELETE',
+      credentials: 'include',
     });
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
       throw new Error('Failed to clear errors');
     }
     return response.json();
@@ -117,6 +193,7 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           content,
           council_models: modelConfig.councilModels || null,
@@ -129,6 +206,9 @@ export const api = {
     );
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
       throw new Error('Failed to send message');
     }
 

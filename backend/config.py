@@ -8,6 +8,22 @@ load_dotenv()
 # OpenRouter API key
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+# GitHub OAuth Configuration
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
+
+# Secret key for session signing (generate a random one if not provided)
+SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "change-me-in-production")
+
+# Allowed GitHub usernames (comma-separated list in env var)
+# If empty or not set, authentication is disabled
+ALLOWED_GITHUB_USERS = [
+    u.strip() for u in os.getenv("ALLOWED_GITHUB_USERS", "").split(",") if u.strip()
+]
+
+# Frontend URL for OAuth callback redirect
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 # Council members - list of OpenRouter model identifiers
 COUNCIL_MODELS = [
     "openai/gpt-5.1",

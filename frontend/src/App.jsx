@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import ErrorCatalog from './components/ErrorCatalog';
+import Login from './components/Login';
+import { useAuth } from './contexts/AuthContext';
 import { api } from './api';
 import './App.css';
 
 function App() {
+  const { user, authEnabled, loading: authLoading } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
@@ -47,55 +50,71 @@ function App() {
     }
   });
 
-  // Load conversations and models on mount
+  // Load conversations and models when user is authenticated
   useEffect(() => {
-    loadConversations();
-    loadModels();
-  }, []);
+    const loadData = async () => {
+      // Load conversations
+      try {
+        const convs = await api.listConversations();
+        setConversations(convs);
+      } catch (error) {
+        console.error('Failed to load conversations:', error);
+      }
+      // Load models
+      try {
+        const data = await api.getModels();
+        const availableModelIds = data.available_models.map(m => m.id);
+        setAvailableModels(data.available_models);
 
-  const loadModels = async () => {
-    try {
-      const data = await api.getModels();
-      const availableModelIds = data.available_models.map(m => m.id);
-      setAvailableModels(data.available_models);
-
-      // Try to restore saved council models from localStorage
-      const savedCouncil = localStorage.getItem(STORAGE_KEYS.councilModels);
-      if (savedCouncil) {
-        try {
-          const parsed = JSON.parse(savedCouncil);
-          // Validate that all saved models still exist in available models
-          const validModels = parsed.filter(id => availableModelIds.includes(id));
-          if (validModels.length > 0) {
-            setCouncilModels(validModels);
-          } else {
+        // Try to restore saved council models from localStorage
+        const savedCouncil = localStorage.getItem(STORAGE_KEYS.councilModels);
+        if (savedCouncil) {
+          try {
+            const parsed = JSON.parse(savedCouncil);
+            const validModels = parsed.filter(id => availableModelIds.includes(id));
+            if (validModels.length > 0) {
+              setCouncilModels(validModels);
+            } else {
+              setCouncilModels(data.default_council);
+            }
+          } catch {
             setCouncilModels(data.default_council);
           }
-        } catch {
+        } else {
           setCouncilModels(data.default_council);
         }
-      } else {
-        setCouncilModels(data.default_council);
-      }
 
-      // Try to restore saved chairman model from localStorage
-      const savedChairman = localStorage.getItem(STORAGE_KEYS.chairmanModel);
-      if (savedChairman && availableModelIds.includes(savedChairman)) {
-        setChairmanModel(savedChairman);
-      } else {
-        setChairmanModel(data.default_chairman);
-      }
+        // Try to restore saved chairman model from localStorage
+        const savedChairman = localStorage.getItem(STORAGE_KEYS.chairmanModel);
+        if (savedChairman && availableModelIds.includes(savedChairman)) {
+          setChairmanModel(savedChairman);
+        } else {
+          setChairmanModel(data.default_chairman);
+        }
 
-      setModelsLoaded(true);
-    } catch (error) {
-      console.error('Failed to load models:', error);
+        setModelsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load models:', error);
+      }
+    };
+    
+    if (user && (!user.auth_disabled || !authEnabled)) {
+      loadData();
     }
-  };
+  }, [user, authEnabled, STORAGE_KEYS.councilModels, STORAGE_KEYS.chairmanModel]);
 
   // Load conversation details when selected
   useEffect(() => {
+    const loadConv = async () => {
+      try {
+        const conv = await api.getConversation(currentConversationId);
+        setCurrentConversation(conv);
+      } catch (error) {
+        console.error('Failed to load conversation:', error);
+      }
+    };
     if (currentConversationId) {
-      loadConversation(currentConversationId);
+      loadConv();
     }
   }, [currentConversationId]);
 
@@ -104,14 +123,14 @@ function App() {
     if (modelsLoaded && councilModels.length > 0) {
       localStorage.setItem(STORAGE_KEYS.councilModels, JSON.stringify(councilModels));
     }
-  }, [councilModels, modelsLoaded]);
+  }, [councilModels, modelsLoaded, STORAGE_KEYS.councilModels]);
 
   // Persist chairman model to localStorage when changed
   useEffect(() => {
     if (modelsLoaded && chairmanModel) {
       localStorage.setItem(STORAGE_KEYS.chairmanModel, chairmanModel);
     }
-  }, [chairmanModel, modelsLoaded]);
+  }, [chairmanModel, modelsLoaded, STORAGE_KEYS.chairmanModel]);
 
   const loadConversations = async () => {
     try {
@@ -119,15 +138,6 @@ function App() {
       setConversations(convs);
     } catch (error) {
       console.error('Failed to load conversations:', error);
-    }
-  };
-
-  const loadConversation = async (id) => {
-    try {
-      const conv = await api.getConversation(id);
-      setCurrentConversation(conv);
-    } catch (error) {
-      console.error('Failed to load conversation:', error);
     }
   };
 
@@ -439,6 +449,20 @@ function App() {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="app loading-container">
+        <div className="loading-spinner">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show login page if auth is enabled and user is not authenticated
+  if (authEnabled && !user) {
+    return <Login />;
+  }
 
   return (
     <div className="app">
