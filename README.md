@@ -109,6 +109,25 @@ You can also select models dynamically from the UI sidebar.
 | `OPENROUTER_API_KEY` | (required) | Your OpenRouter API key |
 | `ERROR_CLASSIFICATION_ENABLED` | `true` | Enable/disable automatic error cataloging |
 
+### 5. Authentication (Optional)
+
+You can restrict access to the app using GitHub OAuth. Only users on the allow list will be able to access the application.
+
+1. Create a GitHub OAuth App at https://github.com/settings/developers
+   - Set the callback URL to `http://localhost:8001/auth/callback` (or your production URL)
+2. Add the following to your `.env` file:
+
+```bash
+GITHUB_CLIENT_ID=your_client_id
+GITHUB_CLIENT_SECRET=your_client_secret
+ALLOWED_GITHUB_USERS=username1,username2,username3
+SESSION_SECRET_KEY=your_random_secret_key  # Optional, auto-generated if not set
+SESSION_COOKIE_SECURE=true  # Set to true for HTTPS in production
+FRONTEND_URL=http://localhost:5173  # Your frontend URL
+```
+
+When all three auth variables (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_USERS`) are set, authentication is enabled. Otherwise, the app runs without authentication.
+
 ## Running the Application
 
 **Option 1: Use the start script**
@@ -161,6 +180,11 @@ Track factual errors across sessions. View error breakdowns by model and by erro
 | `POST` | `/api/conversations/{id}/message/stream` | Send message with SSE streaming |
 | `GET` | `/api/errors` | Get error catalog with summary |
 | `DELETE` | `/api/errors` | Clear error catalog |
+| `GET` | `/auth/status` | Check if authentication is enabled |
+| `GET` | `/auth/login` | Initiate GitHub OAuth flow |
+| `GET` | `/auth/callback` | OAuth callback handler |
+| `GET` | `/auth/me` | Get current authenticated user |
+| `GET/POST` | `/auth/logout` | Log out current user |
 
 ## Tech Stack
 
@@ -175,6 +199,7 @@ Track factual errors across sessions. View error breakdowns by model and by erro
 llm-council-fact-checker/
 ├── backend/
 │   ├── main.py          # FastAPI app and routes
+│   ├── auth.py          # GitHub OAuth authentication
 │   ├── council.py       # 4-stage orchestration logic
 │   ├── openrouter.py    # OpenRouter API client
 │   ├── storage.py       # Conversation persistence
@@ -184,8 +209,12 @@ llm-council-fact-checker/
 │   └── src/
 │       ├── App.jsx              # Main app with streaming state
 │       ├── api.js               # Backend API client
+│       ├── contexts/
+│       │   ├── AuthContext.jsx  # Authentication state
+│       │   └── ThemeContext.jsx # Theme state
 │       └── components/
 │           ├── ChatInterface.jsx   # Main chat view
+│           ├── Login.jsx           # GitHub login page
 │           ├── Sidebar.jsx         # Navigation + model selector
 │           ├── StreamingGrid.jsx   # Real-time grid view
 │           ├── Stage1-4.jsx        # Stage result displays
