@@ -135,13 +135,19 @@ export const api = {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let buffer = ''; // Buffer for incomplete lines
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      // Append new chunk to buffer
+      buffer += decoder.decode(value, { stream: true });
+      
+      // Split by newlines, but keep the last (potentially incomplete) part
+      const lines = buffer.split('\n');
+      // Save the last element (might be incomplete) back to buffer
+      buffer = lines.pop() || '';
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
