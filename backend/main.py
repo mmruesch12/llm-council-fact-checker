@@ -2,6 +2,7 @@
 
 import os
 import re
+from urllib.parse import quote
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
@@ -145,12 +146,14 @@ async def export_conversation(conversation_id: str):
     safe_title = safe_title.rstrip('-')  # Remove trailing hyphens after truncation
     filename = f"{safe_title}.md"
     
-    # Return as downloadable file
+    # Return as downloadable file with RFC 6266 compliant headers
+    # Include both ASCII filename and UTF-8 encoded filename* for better compatibility
+    encoded_filename = quote(filename)
     return Response(
         content=markdown_content,
         media_type="text/markdown",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+            "Content-Disposition": f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_filename}'
         }
     )
 
