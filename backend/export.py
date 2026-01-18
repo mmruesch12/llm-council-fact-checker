@@ -4,13 +4,6 @@ from typing import Dict, Any, List
 from datetime import datetime
 
 
-def format_markdown_response(content: str, indent_level: int = 0) -> str:
-    """Format a response content with proper indentation."""
-    lines = content.split('\n')
-    indent = '  ' * indent_level
-    return '\n'.join(indent + line if line.strip() else '' for line in lines)
-
-
 def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
     """
     Export a conversation to Markdown format.
@@ -57,7 +50,7 @@ def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
                     response_time = response.get('response_time_ms')
                     
                     lines.append(f"**{model_name}**")
-                    if response_time:
+                    if response_time and isinstance(response_time, (int, float)):
                         lines.append(f"*Response Time: {response_time:.0f}ms*")
                     lines.append("")
                     lines.append(content)
@@ -127,7 +120,7 @@ def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
                 response_time = stage4.get('response_time_ms')
                 
                 lines.append(f"**Chairman: {model_name}**")
-                if response_time:
+                if response_time and isinstance(response_time, (int, float)):
                     lines.append(f"*Response Time: {response_time:.0f}ms*")
                 lines.append("")
                 lines.append(content)

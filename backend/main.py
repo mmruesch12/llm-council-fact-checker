@@ -1,6 +1,7 @@
 """FastAPI backend for LLM Council."""
 
 import os
+import re
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
@@ -134,9 +135,13 @@ async def export_conversation(conversation_id: str):
     
     # Create a safe filename from the conversation title
     title = conversation.get('title', 'conversation')
-    # Replace special characters with hyphens
-    safe_title = ''.join(c if c.isalnum() or c in (' ', '-', '_') else '-' for c in title)
-    safe_title = '-'.join(safe_title.split())  # Replace spaces with hyphens
+    # Replace special characters with hyphens, then normalize multiple hyphens/spaces
+    safe_title = re.sub(r'[^a-zA-Z0-9\s\-_]', '-', title)
+    safe_title = re.sub(r'[\s\-]+', '-', safe_title.strip())
+    # Ensure filename is not empty and not too long
+    if not safe_title or safe_title == '-':
+        safe_title = 'conversation'
+    safe_title = safe_title[:100]  # Limit filename length
     filename = f"{safe_title}.md"
     
     # Return as downloadable file
