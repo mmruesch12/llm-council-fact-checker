@@ -190,11 +190,11 @@ Models are hardcoded in `backend/config.py`. Chairman can be same or different f
 ## Future Enhancement Ideas
 
 - Configurable council/chairman via UI instead of config file
-- Export conversations to markdown/PDF
 - Model performance analytics over time
 - Custom fact-checking criteria for different domains
 - Support for reasoning models (o1, etc.) with special handling
 - Web search integration for fact-checking
+- Export to PDF format (currently supports Markdown)
 
 ## Testing Notes
 

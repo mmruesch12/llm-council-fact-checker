@@ -47,6 +47,7 @@ export default function ChatInterface({
   onViewModeChange = () => {},
   factCheckingEnabled = true,
   onFactCheckingToggle = () => {},
+  onExportConversation = () => {},
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -148,6 +149,23 @@ export default function ChatInterface({
               )}
             </svg>
             {factCheckingEnabled ? 'Enabled' : 'Disabled'}
+          </button>
+        </div>
+
+        <div className="toggle-separator"></div>
+
+        <div className="toggle-group">
+          <button
+            className="export-btn"
+            onClick={onExportConversation}
+            disabled={conversation.messages.length === 0}
+            title="Export conversation to Markdown"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8.5 1.5A.5.5 0 0 1 9 1h5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5a.5.5 0 0 1 0 1H2v12h12V2H9a.5.5 0 0 1-.5-.5z"/>
+              <path d="M8 11a.5.5 0 0 1-.5-.5V4.707L5.354 6.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 4.707V10.5A.5.5 0 0 1 8 11z"/>
+            </svg>
+            Export
           </button>
         </div>
       </div>

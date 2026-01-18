@@ -162,6 +162,17 @@ function App() {
     setCurrentConversationId(id);
   };
 
+  const handleExportConversation = async () => {
+    if (!currentConversationId) return;
+    
+    try {
+      await api.exportConversation(currentConversationId);
+    } catch (error) {
+      console.error('Failed to export conversation:', error);
+      alert('Failed to export conversation. Please try again.');
+    }
+  };
+
   const handleSendMessage = async (content) => {
     if (!currentConversationId) return;
 
@@ -496,6 +507,7 @@ function App() {
             onViewModeChange={setStreamingViewMode}
             factCheckingEnabled={factCheckingEnabled}
             onFactCheckingToggle={setFactCheckingEnabled}
+            onExportConversation={handleExportConversation}
           />
         </>
       ) : (

@@ -1,9 +1,11 @@
 """FastAPI backend for LLM Council."""
 
 import os
+import re
+from urllib.parse import quote
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import uuid
@@ -28,6 +30,7 @@ from .council import (
     classify_errors
 )
 from . import error_catalog
+from .export import export_conversation_to_markdown
 
 app = FastAPI(title="LLM Council API")
 
@@ -119,6 +122,42 @@ async def get_conversation(conversation_id: str):
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
+
+
+@app.get("/api/conversations/{conversation_id}/export")
+async def export_conversation(conversation_id: str):
+    """Export a conversation to Markdown format."""
+    conversation = storage.get_conversation(conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    # Generate markdown
+    markdown_content = export_conversation_to_markdown(conversation)
+    
+    # Create a safe filename from the conversation title
+    title = conversation.get('title', 'conversation')
+    # Replace special characters with hyphens, then normalize multiple hyphens/spaces
+    safe_title = re.sub(r'[^a-zA-Z0-9\s\-_]', '-', title)
+    safe_title = re.sub(r'[\s\-]+', '-', safe_title.strip())
+    # Ensure filename is not empty and not too long
+    if not safe_title or safe_title == '-':
+        safe_title = 'conversation'
+    safe_title = safe_title[:100]  # Limit filename length
+    safe_title = safe_title.rstrip('-')  # Remove trailing hyphens after truncation
+    filename = f"{safe_title}.md"
+    
+    # Return as downloadable file with RFC 6266 compliant headers
+    # Include both ASCII filename and UTF-8 encoded filename* for better compatibility
+    # Escape double quotes in filename to prevent header injection
+    safe_filename_header = filename.replace('"', '\\"')
+    encoded_filename = quote(filename, safe='')
+    return Response(
+        content=markdown_content,
+        media_type="text/markdown",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename_header}"; filename*=UTF-8\'\'{encoded_filename}'
+        }
+    )
 
 
 @app.post("/api/conversations/{conversation_id}/message")
