@@ -199,8 +199,10 @@ function App() {
               content: { ...prev.content, stage1: {} }
             }));
             setCurrentConversation((prev) => {
+              if (!prev || !prev.messages || prev.messages.length === 0) return prev;
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
+              if (!lastMsg || !lastMsg.loading) return prev;
               lastMsg.loading.stage1 = true;
               return { ...prev, messages };
             });
@@ -226,8 +228,10 @@ function App() {
               currentStage: null
             }));
             setCurrentConversation((prev) => {
+              if (!prev || !prev.messages || prev.messages.length === 0) return prev;
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
+              if (!lastMsg || !lastMsg.loading) return prev;
               lastMsg.stage1 = event.data;
               lastMsg.loading.stage1 = false;
               return { ...prev, messages };
@@ -243,8 +247,10 @@ function App() {
               content: { ...prev.content, fact_check: {} }
             }));
             setCurrentConversation((prev) => {
+              if (!prev || !prev.messages || prev.messages.length === 0) return prev;
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
+              if (!lastMsg || !lastMsg.loading) return prev;
               lastMsg.loading.fact_check = true;
               return { ...prev, messages };
             });
@@ -270,8 +276,10 @@ function App() {
               currentStage: null
             }));
             setCurrentConversation((prev) => {
+              if (!prev || !prev.messages || prev.messages.length === 0) return prev;
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
+              if (!lastMsg || !lastMsg.loading) return prev;
               lastMsg.fact_check = event.data;
               lastMsg.metadata = {
                 ...lastMsg.metadata,
@@ -292,8 +300,10 @@ function App() {
               content: { ...prev.content, stage3: {} }
             }));
             setCurrentConversation((prev) => {
+              if (!prev || !prev.messages || prev.messages.length === 0) return prev;
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
+              if (!lastMsg || !lastMsg.loading) return prev;
               lastMsg.loading.stage3 = true;
               return { ...prev, messages };
             });
@@ -319,8 +329,10 @@ function App() {
               currentStage: null
             }));
             setCurrentConversation((prev) => {
+              if (!prev || !prev.messages || prev.messages.length === 0) return prev;
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
+              if (!lastMsg || !lastMsg.loading) return prev;
               lastMsg.stage3 = event.data;
               lastMsg.metadata = {
                 ...lastMsg.metadata,
@@ -340,8 +352,10 @@ function App() {
               content: { ...prev.content, stage4: {} }
             }));
             setCurrentConversation((prev) => {
+              if (!prev || !prev.messages || prev.messages.length === 0) return prev;
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
+              if (!lastMsg || !lastMsg.loading) return prev;
               lastMsg.loading.stage4 = true;
               return { ...prev, messages };
             });
@@ -367,8 +381,10 @@ function App() {
               currentStage: null
             }));
             setCurrentConversation((prev) => {
+              if (!prev || !prev.messages || prev.messages.length === 0) return prev;
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
+              if (!lastMsg || !lastMsg.loading) return prev;
               lastMsg.stage4 = event.data;
               lastMsg.loading.stage4 = false;
               return { ...prev, messages };
