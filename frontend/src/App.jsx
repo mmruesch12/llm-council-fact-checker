@@ -5,8 +5,12 @@ import ErrorCatalog from './components/ErrorCatalog';
 import { api } from './api';
 import './App.css';
 
+// Number of optimistic messages added when sending (user + assistant placeholder)
+const OPTIMISTIC_MESSAGES_COUNT = 2;
+
 // Helper function to safely update assistant message in conversation
-// Returns null if state is invalid, otherwise returns the last message
+// Returns null if state is invalid, otherwise returns { messages, lastMsg }
+// Note: lastMsg is mutable and should be modified by the caller (React pattern for state updates)
 function getLastMessageIfValid(prev) {
   if (!prev || !prev.messages || prev.messages.length === 0) return null;
   const messages = [...prev.messages];
@@ -16,9 +20,6 @@ function getLastMessageIfValid(prev) {
 }
 
 function App() {
-  // Number of optimistic messages added when sending (user + assistant placeholder)
-  const OPTIMISTIC_MESSAGES_COUNT = 2;
-
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
