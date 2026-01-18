@@ -21,10 +21,14 @@ CHAIRMAN_MODEL = "x-ai/grok-4.1-fast"
 
 # All available models for selection (council models are a subset of these)
 AVAILABLE_MODELS = [
+    {"id": "openai/gpt-5.2", "name": "GPT-5.2", "provider": "OpenAI"},
     {"id": "openai/gpt-5.1", "name": "GPT-5.1", "provider": "OpenAI"},
     {"id": "openai/gpt-5", "name": "GPT-5", "provider": "OpenAI"},
+    {"id": "openai/gpt-5-mini", "name": "GPT-5 Mini", "provider": "OpenAI"},
+    {"id": "openai/gpt-5-nano", "name": "GPT-5 Nano", "provider": "OpenAI"},
     {"id": "openai/gpt-4.1", "name": "GPT-4.1", "provider": "OpenAI"},
     {"id": "google/gemini-3-pro-preview", "name": "Gemini 3 Pro", "provider": "Google"},
+    {"id": "google/gemini-3-flash-preview", "name": "Gemini 3 Flash", "provider": "Google"},
     {"id": "google/gemini-2.5-pro", "name": "Gemini 2.5 Pro", "provider": "Google"},
     {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash", "provider": "Google"},
     {"id": "anthropic/claude-sonnet-4.5", "name": "Claude Sonnet 4.5", "provider": "Anthropic"},
