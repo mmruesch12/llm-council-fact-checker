@@ -148,12 +148,14 @@ async def export_conversation(conversation_id: str):
     
     # Return as downloadable file with RFC 6266 compliant headers
     # Include both ASCII filename and UTF-8 encoded filename* for better compatibility
-    encoded_filename = quote(filename)
+    # Escape double quotes in filename to prevent header injection
+    safe_filename_header = filename.replace('"', '\\"')
+    encoded_filename = quote(filename, safe='')
     return Response(
         content=markdown_content,
         media_type="text/markdown",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_filename}'
+            "Content-Disposition": f'attachment; filename="{safe_filename_header}"; filename*=UTF-8\'\'{encoded_filename}'
         }
     )
 
