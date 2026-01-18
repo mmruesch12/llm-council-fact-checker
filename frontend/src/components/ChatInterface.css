@@ -370,6 +370,41 @@
   color: var(--text-tertiary);
 }
 
+/* Export button */
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.export-btn:hover:not(:disabled) {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  border-color: var(--accent-blue);
+}
+
+.export-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.export-btn svg {
+  opacity: 0.8;
+}
+
+.export-btn:hover:not(:disabled) svg {
+  opacity: 1;
+}
+
 /* Cataloging Indicator */
 .cataloging-indicator {
   margin-top: var(--space-lg);

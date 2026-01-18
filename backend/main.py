@@ -3,7 +3,7 @@
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import uuid
@@ -28,6 +28,7 @@ from .council import (
     classify_errors
 )
 from . import error_catalog
+from .export import export_conversation_to_markdown
 
 app = FastAPI(title="LLM Council API")
 
@@ -119,6 +120,33 @@ async def get_conversation(conversation_id: str):
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
+
+
+@app.get("/api/conversations/{conversation_id}/export")
+async def export_conversation(conversation_id: str):
+    """Export a conversation to Markdown format."""
+    conversation = storage.get_conversation(conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    # Generate markdown
+    markdown_content = export_conversation_to_markdown(conversation)
+    
+    # Create a safe filename from the conversation title
+    title = conversation.get('title', 'conversation')
+    # Replace special characters with hyphens
+    safe_title = ''.join(c if c.isalnum() or c in (' ', '-', '_') else '-' for c in title)
+    safe_title = '-'.join(safe_title.split())  # Replace spaces with hyphens
+    filename = f"{safe_title}.md"
+    
+    # Return as downloadable file
+    return Response(
+        content=markdown_content,
+        media_type="text/markdown",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
 
 
 @app.post("/api/conversations/{conversation_id}/message")
