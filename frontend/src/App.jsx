@@ -155,10 +155,13 @@ function App() {
     try {
       // Optimistically add user message to UI
       const userMessage = { role: 'user', content };
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: [...prev.messages, userMessage],
-      }));
+      setCurrentConversation((prev) => {
+        if (!prev || !prev.messages) return prev;
+        return {
+          ...prev,
+          messages: [...prev.messages, userMessage],
+        };
+      });
 
       // Create a partial assistant message that will be updated progressively
       const assistantMessage = {
@@ -177,10 +180,13 @@ function App() {
       };
 
       // Add the partial assistant message
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: [...prev.messages, assistantMessage],
-      }));
+      setCurrentConversation((prev) => {
+        if (!prev || !prev.messages) return prev;
+        return {
+          ...prev,
+          messages: [...prev.messages, assistantMessage],
+        };
+      });
 
       // Send message with streaming
       const modelConfig = {
@@ -448,10 +454,13 @@ function App() {
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove optimistic messages on error
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: prev.messages.slice(0, -2),
-      }));
+      setCurrentConversation((prev) => {
+        if (!prev || !prev.messages || prev.messages.length < 2) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.slice(0, -2),
+        };
+      });
       setIsLoading(false);
     }
   };
