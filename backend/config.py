@@ -13,11 +13,11 @@ COUNCIL_MODELS = [
     "openai/gpt-5.1",
     "google/gemini-3-pro-preview",
     "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4.1-fast:free",
+    "x-ai/grok-4.1-fast",
 ]
 
 # Chairman model - synthesizes final response
-CHAIRMAN_MODEL = "x-ai/grok-4.1-fast:free"
+CHAIRMAN_MODEL = "x-ai/grok-4.1-fast"
 
 # All available models for selection (council models are a subset of these)
 AVAILABLE_MODELS = [
@@ -30,7 +30,7 @@ AVAILABLE_MODELS = [
     {"id": "anthropic/claude-sonnet-4.5", "name": "Claude Sonnet 4.5", "provider": "Anthropic"},
     {"id": "anthropic/claude-sonnet-4", "name": "Claude Sonnet 4", "provider": "Anthropic"},
     {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5", "provider": "Anthropic"},
-    {"id": "x-ai/grok-4.1-fast:free", "name": "Grok 4.1 Fast (Free)", "provider": "xAI"},
+    {"id": "x-ai/grok-4.1-fast", "name": "Grok 4.1 Fast", "provider": "xAI"},
     {"id": "x-ai/grok-4-fast", "name": "Grok 4 Fast", "provider": "xAI"},
     {"id": "x-ai/grok-4", "name": "Grok 4", "provider": "xAI"},
     {"id": "x-ai/grok-code-fast-1", "name": "Grok Code Fast 1", "provider": "xAI"},
