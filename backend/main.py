@@ -142,6 +142,7 @@ async def export_conversation(conversation_id: str):
     if not safe_title or safe_title == '-':
         safe_title = 'conversation'
     safe_title = safe_title[:100]  # Limit filename length
+    safe_title = safe_title.rstrip('-')  # Remove trailing hyphens after truncation
     filename = f"{safe_title}.md"
     
     # Return as downloadable file
