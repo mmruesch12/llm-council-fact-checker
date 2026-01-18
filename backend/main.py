@@ -1,5 +1,6 @@
 """FastAPI backend for LLM Council."""
 
+import os
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -31,10 +32,22 @@ from .auth import router as auth_router, require_auth, is_auth_enabled, get_curr
 
 app = FastAPI(title="LLM Council API")
 
-# Enable CORS for local development
+# CORS configuration for local development and production
+# In production on Render, set FRONTEND_URL environment variable
+cors_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+# Add production frontend URL if configured
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    cors_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", FRONTEND_URL],
+    allow_origins=cors_origins,
+    # Allow any Render.com subdomain for flexibility via regex
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

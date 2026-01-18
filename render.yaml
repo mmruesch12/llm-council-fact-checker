@@ -1,0 +1,47 @@
+# Render Blueprint for LLM Council
+# Documentation: https://docs.render.com/blueprint-spec
+#
+# Note: Service names (llm-council-api, llm-council-frontend) are used in URL 
+# configuration. If you rename services, update the corresponding environment 
+# variables (FRONTEND_URL, VITE_API_URL) accordingly.
+
+services:
+  # Backend API service (FastAPI/Python)
+  - type: web
+    name: llm-council-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false  # Must be set manually in Render dashboard for security
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: ERROR_CLASSIFICATION_ENABLED
+        value: "true"
+      - key: FRONTEND_URL
+        value: https://llm-council-frontend.onrender.com
+    healthCheckPath: /
+
+  # Frontend static site (React/Vite)
+  - type: web
+    name: llm-council-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    headers:
+      # Allow caching for hashed assets (JS/CSS bundles)
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      # Prevent caching for index.html to ensure fresh deployments are loaded
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://llm-council-api.onrender.com
