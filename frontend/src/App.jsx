@@ -5,6 +5,20 @@ import ErrorCatalog from './components/ErrorCatalog';
 import { api } from './api';
 import './App.css';
 
+// Number of optimistic messages added when sending (user + assistant placeholder)
+const OPTIMISTIC_MESSAGES_COUNT = 2;
+
+// Helper function to safely update assistant message in conversation
+// Returns null if state is invalid, otherwise returns { messages, lastMsg }
+// Note: lastMsg is mutable and should be modified by the caller (React pattern for state updates)
+function getLastMessageIfValid(prev) {
+  if (!prev || !prev.messages || prev.messages.length === 0) return null;
+  const messages = [...prev.messages];
+  const lastMsg = messages[messages.length - 1];
+  if (!lastMsg || !lastMsg.loading) return null;
+  return { messages, lastMsg };
+}
+
 function App() {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
@@ -155,10 +169,13 @@ function App() {
     try {
       // Optimistically add user message to UI
       const userMessage = { role: 'user', content };
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: [...prev.messages, userMessage],
-      }));
+      setCurrentConversation((prev) => {
+        if (!prev || !prev.messages) return prev;
+        return {
+          ...prev,
+          messages: [...prev.messages, userMessage],
+        };
+      });
 
       // Create a partial assistant message that will be updated progressively
       const assistantMessage = {
@@ -177,10 +194,13 @@ function App() {
       };
 
       // Add the partial assistant message
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: [...prev.messages, assistantMessage],
-      }));
+      setCurrentConversation((prev) => {
+        if (!prev || !prev.messages) return prev;
+        return {
+          ...prev,
+          messages: [...prev.messages, assistantMessage],
+        };
+      });
 
       // Send message with streaming
       const modelConfig = {
@@ -199,8 +219,9 @@ function App() {
               content: { ...prev.content, stage1: {} }
             }));
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const result = getLastMessageIfValid(prev);
+              if (!result) return prev;
+              const { messages, lastMsg } = result;
               lastMsg.loading.stage1 = true;
               return { ...prev, messages };
             });
@@ -226,8 +247,9 @@ function App() {
               currentStage: null
             }));
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const result = getLastMessageIfValid(prev);
+              if (!result) return prev;
+              const { messages, lastMsg } = result;
               lastMsg.stage1 = event.data;
               lastMsg.loading.stage1 = false;
               return { ...prev, messages };
@@ -243,8 +265,9 @@ function App() {
               content: { ...prev.content, fact_check: {} }
             }));
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const result = getLastMessageIfValid(prev);
+              if (!result) return prev;
+              const { messages, lastMsg } = result;
               lastMsg.loading.fact_check = true;
               return { ...prev, messages };
             });
@@ -270,8 +293,9 @@ function App() {
               currentStage: null
             }));
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const result = getLastMessageIfValid(prev);
+              if (!result) return prev;
+              const { messages, lastMsg } = result;
               lastMsg.fact_check = event.data;
               lastMsg.metadata = {
                 ...lastMsg.metadata,
@@ -292,8 +316,9 @@ function App() {
               content: { ...prev.content, stage3: {} }
             }));
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const result = getLastMessageIfValid(prev);
+              if (!result) return prev;
+              const { messages, lastMsg } = result;
               lastMsg.loading.stage3 = true;
               return { ...prev, messages };
             });
@@ -319,8 +344,9 @@ function App() {
               currentStage: null
             }));
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const result = getLastMessageIfValid(prev);
+              if (!result) return prev;
+              const { messages, lastMsg } = result;
               lastMsg.stage3 = event.data;
               lastMsg.metadata = {
                 ...lastMsg.metadata,
@@ -340,8 +366,9 @@ function App() {
               content: { ...prev.content, stage4: {} }
             }));
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const result = getLastMessageIfValid(prev);
+              if (!result) return prev;
+              const { messages, lastMsg } = result;
               lastMsg.loading.stage4 = true;
               return { ...prev, messages };
             });
@@ -367,8 +394,9 @@ function App() {
               currentStage: null
             }));
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const result = getLastMessageIfValid(prev);
+              if (!result) return prev;
+              const { messages, lastMsg } = result;
               lastMsg.stage4 = event.data;
               lastMsg.loading.stage4 = false;
               return { ...prev, messages };
@@ -432,10 +460,13 @@ function App() {
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove optimistic messages on error
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: prev.messages.slice(0, -2),
-      }));
+      setCurrentConversation((prev) => {
+        if (!prev || !prev.messages || prev.messages.length < OPTIMISTIC_MESSAGES_COUNT) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.slice(0, -OPTIMISTIC_MESSAGES_COUNT),
+        };
+      });
       setIsLoading(false);
     }
   };
