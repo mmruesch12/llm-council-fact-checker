@@ -26,10 +26,12 @@ def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
     lines.append("")
     
     # Process each message
-    for idx, message in enumerate(conversation.get('messages', [])):
+    query_counter = 0
+    for _, message in enumerate(conversation.get('messages', [])):
         if message['role'] == 'user':
             # User message
-            lines.append(f"## Query {(idx // 2) + 1}")
+            query_counter += 1
+            lines.append(f"## Query {query_counter}")
             lines.append("")
             lines.append(f"**User:** {message['content']}")
             lines.append("")
