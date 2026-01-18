@@ -1,7 +1,7 @@
 """Export conversations to various formats."""
 
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
@@ -133,7 +133,7 @@ def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
     lines.append("")
     lines.append("---")
     lines.append("")
-    lines.append(f"*Exported from LLM Council on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC*")
+    lines.append(f"*Exported from LLM Council on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC*")
     lines.append("")
     
     return '\n'.join(lines)

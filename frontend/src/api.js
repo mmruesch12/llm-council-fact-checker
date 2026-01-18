@@ -118,7 +118,8 @@ export const api = {
     const contentDisposition = response.headers.get('Content-Disposition');
     let filename = 'conversation.md';
     if (contentDisposition) {
-      // Match both quoted and unquoted filenames
+      // Match both quoted (filename="name.md") and unquoted (filename=name.md) formats
+      // First capture group for quoted, second for unquoted
       const match = contentDisposition.match(/filename=(?:"([^"]+)"|([^;\s]+))/);
       if (match) {
         filename = match[1] || match[2];
