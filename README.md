@@ -84,18 +84,18 @@ COUNCIL_MODELS = [
     "openai/gpt-5.1",
     "google/gemini-3-pro-preview",
     "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4.1-fast:free",
+    "x-ai/grok-4.1-fast",
 ]
 
 # Chairman who synthesizes the final answer
-CHAIRMAN_MODEL = "x-ai/grok-4.1-fast:free"
+CHAIRMAN_MODEL = "x-ai/grok-4.1-fast"
 ```
 
 **Available models include:**
 - OpenAI: GPT-5.1, GPT-5, GPT-4.1
 - Google: Gemini 3 Pro, Gemini 2.5 Pro, Gemini 2.5 Flash
 - Anthropic: Claude Sonnet 4.5, Claude Sonnet 4, Claude Haiku 4.5
-- xAI: Grok 4.1 Fast (Free), Grok 4 Fast, Grok 4, Grok Code Fast 1
+- xAI: Grok 4.1 Fast, Grok 4 Fast, Grok 4, Grok Code Fast 1
 - Meta: Llama 4 Maverick, Llama 3.3 70B
 - DeepSeek: DeepSeek V3, DeepSeek R1
 - Mistral: Mistral Large
