@@ -89,6 +89,23 @@ class Conversation(BaseModel):
     messages: List[Dict[str, Any]]
 
 
+class SynthesizeRequest(BaseModel):
+    """Request to synthesize a final answer from provided or generated responses."""
+    question: str
+    responses: List[Dict[str, str]] = None  # Optional: [{"model": "...", "content": "..."}]
+    council_models: List[str] = None  # Used only if responses not provided
+    chairman_model: str = None
+    fact_checking_enabled: bool = False  # Default to false for simple synthesis
+    include_metadata: bool = False  # Whether to return full metadata
+
+
+class SynthesizeResponse(BaseModel):
+    """Response containing the synthesized answer."""
+    answer: str
+    chairman_model: str
+    metadata: Dict[str, Any] = None  # Optional metadata if include_metadata=True
+
+
 async def optional_auth(request: Request) -> dict:
     """Optional authentication - only enforced if auth is enabled."""
     if is_auth_enabled():
@@ -110,6 +127,105 @@ async def get_models(user: dict = Depends(optional_auth)):
         "default_council": COUNCIL_MODELS,
         "default_chairman": CHAIRMAN_MODEL
     }
+
+
+@app.post("/api/synthesize", response_model=SynthesizeResponse)
+async def synthesize_answer(request: SynthesizeRequest, user: dict = Depends(optional_auth)):
+    """
+    Synthesize a final answer from the chairman model.
+    
+    This endpoint allows external apps to get a synthesized answer either:
+    1. From pre-provided responses (fast path - just runs stage 4)
+    2. By running the full council process (stages 1-4)
+    
+    Args:
+        request.question: The user's question
+        request.responses: Optional list of pre-generated responses [{"model": "...", "content": "..."}]
+        request.council_models: Council models to use (if responses not provided)
+        request.chairman_model: Chairman model for synthesis
+        request.fact_checking_enabled: Whether to run fact-checking (default: False for simplicity)
+        request.include_metadata: Whether to return full metadata (default: False)
+    
+    Returns:
+        SynthesizeResponse with the chairman's synthesized answer
+    """
+    chairman = request.chairman_model if request.chairman_model else CHAIRMAN_MODEL
+    
+    # If responses are provided, use them directly (fast path)
+    if request.responses:
+        # Format responses for stage 4
+        stage1_results = []
+        for idx, resp in enumerate(request.responses):
+            stage1_results.append({
+                "model": resp.get("model", f"unknown-{idx}"),
+                "instance": idx,
+                "response": resp.get("content", ""),
+                "response_time_ms": None
+            })
+        
+        # Create label mapping for de-anonymization
+        labels = [chr(65 + i) for i in range(len(stage1_results))]
+        label_to_model = {
+            f"Response {label}": {
+                "model": result['model'],
+                "instance": result.get('instance', idx)
+            }
+            for idx, (label, result) in enumerate(zip(labels, stage1_results))
+        }
+        
+        # Skip fact-checking and rankings - go straight to synthesis
+        fact_check_results = []
+        stage3_results = []
+        
+        # Run stage 4 synthesis
+        stage4_result = await stage4_synthesize_final(
+            request.question,
+            stage1_results,
+            fact_check_results,
+            stage3_results,
+            label_to_model,
+            chairman
+        )
+        
+        response_data = {
+            "answer": stage4_result.get("response", ""),
+            "chairman_model": chairman
+        }
+        
+        if request.include_metadata:
+            response_data["metadata"] = {
+                "responses_provided": len(request.responses),
+                "fact_checking_enabled": False,
+                "full_council_run": False
+            }
+        
+        return response_data
+    
+    # No responses provided - run full council process
+    else:
+        stage1_results, fact_check_results, stage3_results, stage4_result, metadata = await run_full_council(
+            request.question,
+            request.council_models,
+            chairman,
+            request.fact_checking_enabled
+        )
+        
+        response_data = {
+            "answer": stage4_result.get("response", ""),
+            "chairman_model": chairman
+        }
+        
+        if request.include_metadata:
+            response_data["metadata"] = {
+                "responses_count": len(stage1_results),
+                "fact_checking_enabled": request.fact_checking_enabled,
+                "full_council_run": True,
+                "council_models": request.council_models or COUNCIL_MODELS,
+                "aggregate_rankings": metadata.get("aggregate_rankings", []),
+                "aggregate_fact_checks": metadata.get("aggregate_fact_checks", [])
+            }
+        
+        return response_data
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
