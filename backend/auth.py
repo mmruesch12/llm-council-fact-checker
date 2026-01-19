@@ -107,7 +107,7 @@ async def login(request: Request):
         value=state,
         httponly=True,
         secure=SESSION_COOKIE_SECURE,
-        samesite="lax",
+        samesite="none",  # Required for cross-site cookies (frontend/backend on different domains)
         max_age=600  # 10 minutes
     )
     
@@ -177,7 +177,7 @@ async def oauth_callback(request: Request, code: str = None, state: str = None, 
         value=create_session_cookie(session_data),
         httponly=True,
         secure=SESSION_COOKIE_SECURE,
-        samesite="lax",
+        samesite="none",  # Required for cross-site cookies (frontend/backend on different domains)
         max_age=SESSION_MAX_AGE
     )
     # Clear the OAuth state cookie

@@ -87,7 +87,9 @@ The following environment variables are now used for OAuth configuration:
 | `FRONTEND_URL` | Yes | Frontend URL for post-auth redirect | `https://llm-council-frontend-ux48.onrender.com` |
 | `OAUTH_CALLBACK_URL` | Optional | Explicit OAuth callback URL (auto-detected if not set) | `https://llm-council-api-9zfj.onrender.com/auth/callback` |
 | `SESSION_SECRET_KEY` | Optional | Secret key for session signing (auto-generated if not set) | Random hex string |
-| `SESSION_COOKIE_SECURE` | Optional | Use secure cookies (should be `true` for HTTPS) | `true` |
+| `SESSION_COOKIE_SECURE` | **Required for production** | Use secure cookies (must be `true` for HTTPS/cross-domain) | `true` |
+
+**Important:** For production deployments with separate frontend and backend domains, `SESSION_COOKIE_SECURE` **must** be set to `true`. The session cookies use `SameSite=None` to work across domains, which requires the `Secure` flag.
 
 ## Summary
 
@@ -98,6 +100,8 @@ The fix involves two changes:
    
 2. **Code enhancement** (already completed in this PR)
    - Add `OAUTH_CALLBACK_URL` environment variable for explicit configuration
+   - Update cookie settings to use `SameSite=None` for cross-domain compatibility
+   - Require `SESSION_COOKIE_SECURE=true` in production
    - Update documentation to clarify callback URL must point to backend
 
 After completing Step 1 (updating GitHub OAuth app settings), the authentication flow will work correctly.

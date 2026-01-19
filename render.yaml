@@ -23,6 +23,8 @@ services:
         value: https://llm-council-frontend-ux48.onrender.com
       - key: OAUTH_CALLBACK_URL
         value: https://llm-council-api-9zfj.onrender.com/auth/callback
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
     healthCheckPath: /
 
   # Frontend static site (React/Vite)
