@@ -212,7 +212,7 @@ This endpoint allows external applications to easily get a synthesized answer fr
     {"model": "model-name", "content": "response text"},
     {"model": "another-model", "content": "another response"}
   ],
-  "chairman_model": "openai/gpt-4.1",  // Optional: defaults to CHAIRMAN_MODEL
+  "chairman_model": "x-ai/grok-4.1-fast",  // Optional: defaults to CHAIRMAN_MODEL
   "council_models": ["model1", "model2"],  // Optional: used if responses not provided
   "fact_checking_enabled": false,  // Optional: default false
   "include_metadata": true  // Optional: default false
@@ -223,7 +223,7 @@ This endpoint allows external applications to easily get a synthesized answer fr
 ```json
 {
   "answer": "Synthesized answer from chairman",
-  "chairman_model": "openai/gpt-4.1",
+  "chairman_model": "x-ai/grok-4.1-fast",
   "metadata": {  // Only if include_metadata=true
     "responses_provided": 3,
     "fact_checking_enabled": false,
@@ -253,10 +253,10 @@ import httpx
 response = httpx.post("http://localhost:8001/api/synthesize", json={
     "question": "What causes climate change?",
     "responses": [
-        {"model": "gpt-4", "content": "Greenhouse gases from human activities..."},
-        {"model": "claude", "content": "Carbon emissions and deforestation..."}
+        {"model": "openai/gpt-5.1", "content": "Greenhouse gases from human activities..."},
+        {"model": "anthropic/claude-sonnet-4.5", "content": "Carbon emissions and deforestation..."}
     ],
-    "chairman_model": "google/gemini-2.5-flash"
+    "chairman_model": "x-ai/grok-4.1-fast"
 })
 result = response.json()
 print(result["answer"])

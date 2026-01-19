@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 import json
 import asyncio
@@ -92,9 +92,9 @@ class Conversation(BaseModel):
 class SynthesizeRequest(BaseModel):
     """Request to synthesize a final answer from provided or generated responses."""
     question: str
-    responses: List[Dict[str, str]] = None  # Optional: [{"model": "...", "content": "..."}]
-    council_models: List[str] = None  # Used only if responses not provided
-    chairman_model: str = None
+    responses: Optional[List[Dict[str, str]]] = None  # Optional: [{"model": "...", "content": "..."}]
+    council_models: Optional[List[str]] = None  # Used only if responses not provided
+    chairman_model: Optional[str] = None
     fact_checking_enabled: bool = False  # Default to false for simple synthesis
     include_metadata: bool = False  # Whether to return full metadata
 
@@ -103,7 +103,7 @@ class SynthesizeResponse(BaseModel):
     """Response containing the synthesized answer."""
     answer: str
     chairman_model: str
-    metadata: Dict[str, Any] = None  # Optional metadata if include_metadata=True
+    metadata: Optional[Dict[str, Any]] = None  # Optional metadata if include_metadata=True
 
 
 async def optional_auth(request: Request) -> dict:
