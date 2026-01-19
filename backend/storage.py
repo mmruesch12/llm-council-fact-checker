@@ -1,20 +1,32 @@
-"""JSON-based storage for conversations."""
+"""Storage for conversations - now using SQLite database."""
 
 import json
 import os
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from .config import DATA_DIR
+from .config import DATA_DIR, USE_SQLITE_DB
+
+# Import both JSON and SQLite backends
+if USE_SQLITE_DB:
+    from .database import (
+        create_conversation_db,
+        get_conversation_db,
+        list_conversations_db,
+        add_user_message_db,
+        add_assistant_message_db,
+        update_conversation_title_db,
+    )
 
 
 def ensure_data_dir():
     """Ensure the data directory exists."""
-    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+    if not USE_SQLITE_DB:
+        Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
 
 def get_conversation_path(conversation_id: str) -> str:
-    """Get the file path for a conversation."""
+    """Get the file path for a conversation (JSON backend only)."""
     return os.path.join(DATA_DIR, f"{conversation_id}.json")
 
 
@@ -28,6 +40,10 @@ def create_conversation(conversation_id: str) -> Dict[str, Any]:
     Returns:
         New conversation dict
     """
+    if USE_SQLITE_DB:
+        return create_conversation_db(conversation_id)
+    
+    # JSON backend (legacy)
     ensure_data_dir()
 
     conversation = {
@@ -55,6 +71,10 @@ def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
     Returns:
         Conversation dict or None if not found
     """
+    if USE_SQLITE_DB:
+        return get_conversation_db(conversation_id)
+    
+    # JSON backend (legacy)
     path = get_conversation_path(conversation_id)
 
     if not os.path.exists(path):
@@ -66,11 +86,15 @@ def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
 
 def save_conversation(conversation: Dict[str, Any]):
     """
-    Save a conversation to storage.
+    Save a conversation to storage (JSON backend only).
 
     Args:
         conversation: Conversation dict to save
     """
+    if USE_SQLITE_DB:
+        # Not needed for SQLite - data is saved via direct DB operations
+        return
+    
     ensure_data_dir()
 
     path = get_conversation_path(conversation['id'])
@@ -85,6 +109,10 @@ def list_conversations() -> List[Dict[str, Any]]:
     Returns:
         List of conversation metadata dicts
     """
+    if USE_SQLITE_DB:
+        return list_conversations_db()
+    
+    # JSON backend (legacy)
     ensure_data_dir()
 
     conversations = []
@@ -115,6 +143,11 @@ def add_user_message(conversation_id: str, content: str):
         conversation_id: Conversation identifier
         content: User message content
     """
+    if USE_SQLITE_DB:
+        add_user_message_db(conversation_id, content)
+        return
+    
+    # JSON backend (legacy)
     conversation = get_conversation(conversation_id)
     if conversation is None:
         raise ValueError(f"Conversation {conversation_id} not found")
@@ -145,6 +178,11 @@ def add_assistant_message(
         stage3: List of model rankings (informed by fact-checks)
         stage4: Final synthesized response with fact-check validation
     """
+    if USE_SQLITE_DB:
+        add_assistant_message_db(conversation_id, stage1, fact_check, stage3, stage4)
+        return
+    
+    # JSON backend (legacy)
     conversation = get_conversation(conversation_id)
     if conversation is None:
         raise ValueError(f"Conversation {conversation_id} not found")
@@ -169,6 +207,11 @@ def update_conversation_title(conversation_id: str, title: str):
         conversation_id: Conversation identifier
         title: New title for the conversation
     """
+    if USE_SQLITE_DB:
+        update_conversation_title_db(conversation_id, title)
+        return
+    
+    # JSON backend (legacy)
     conversation = get_conversation(conversation_id)
     if conversation is None:
         raise ValueError(f"Conversation {conversation_id} not found")

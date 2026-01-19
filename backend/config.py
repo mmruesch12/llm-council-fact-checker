@@ -82,6 +82,10 @@ ERROR_CATALOG_FILE = "data/error_catalog.json"
 # Feature flag for error classification
 ERROR_CLASSIFICATION_ENABLED = os.getenv("ERROR_CLASSIFICATION_ENABLED", "true").lower() == "true"
 
+# Database backend selection
+# Set to True to use SQLite database, False to use JSON files (legacy)
+USE_SQLITE_DB = os.getenv("USE_SQLITE_DB", "true").lower() == "true"
+
 # Predefined error taxonomy for fact-checking classification
 ERROR_TYPES = [
     "Hallucinated Fact",        # Made-up information with no basis

@@ -471,7 +471,7 @@ async def get_errors(user: dict = Depends(optional_auth)):
 @app.delete("/api/errors")
 async def clear_errors(user: dict = Depends(optional_auth)):
     """Clear all cataloged errors."""
-    error_catalog.save_catalog({"errors": []})
+    error_catalog.clear_error_catalog()
     return {"status": "ok", "message": "Error catalog cleared"}
 
 

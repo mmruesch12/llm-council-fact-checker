@@ -6,11 +6,25 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from .config import ERROR_CATALOG_FILE, ERROR_TYPES
+from .config import ERROR_CATALOG_FILE, ERROR_TYPES, USE_SQLITE_DB
+
+# Import both JSON and SQLite backends
+if USE_SQLITE_DB:
+    from .database import (
+        add_errors_db,
+        get_all_errors_db,
+        get_errors_by_model_db,
+        get_errors_by_type_db,
+        get_error_summary_db,
+        clear_error_catalog_db,
+    )
 
 
 def _ensure_catalog_exists() -> None:
-    """Ensure the error catalog file and its directory exist."""
+    """Ensure the error catalog file and its directory exist (JSON backend only)."""
+    if USE_SQLITE_DB:
+        return
+    
     os.makedirs(os.path.dirname(ERROR_CATALOG_FILE), exist_ok=True)
     if not os.path.exists(ERROR_CATALOG_FILE):
         with open(ERROR_CATALOG_FILE, 'w') as f:
@@ -18,14 +32,21 @@ def _ensure_catalog_exists() -> None:
 
 
 def load_catalog() -> Dict[str, Any]:
-    """Load the error catalog from disk."""
+    """Load the error catalog from disk (JSON backend only)."""
+    if USE_SQLITE_DB:
+        # For SQLite, return a compatible structure
+        return {"errors": get_all_errors_db()}
+    
     _ensure_catalog_exists()
     with open(ERROR_CATALOG_FILE, 'r') as f:
         return json.load(f)
 
 
 def save_catalog(catalog: Dict[str, Any]) -> None:
-    """Save the error catalog to disk."""
+    """Save the error catalog to disk (JSON backend only)."""
+    if USE_SQLITE_DB:
+        return
+    
     _ensure_catalog_exists()
     with open(ERROR_CATALOG_FILE, 'w') as f:
         json.dump(catalog, f, indent=2)
@@ -47,6 +68,11 @@ def add_errors(errors: List[Dict[str, Any]]) -> None:
     if not errors:
         return
 
+    if USE_SQLITE_DB:
+        add_errors_db(errors)
+        return
+    
+    # JSON backend (legacy)
     catalog = load_catalog()
 
     for error in errors:
@@ -66,18 +92,30 @@ def add_errors(errors: List[Dict[str, Any]]) -> None:
 
 def get_all_errors() -> List[Dict[str, Any]]:
     """Get all errors from the catalog."""
+    if USE_SQLITE_DB:
+        return get_all_errors_db()
+    
+    # JSON backend (legacy)
     catalog = load_catalog()
     return catalog.get("errors", [])
 
 
 def get_errors_by_model(model: str) -> List[Dict[str, Any]]:
     """Get all errors for a specific model."""
+    if USE_SQLITE_DB:
+        return get_errors_by_model_db(model)
+    
+    # JSON backend (legacy)
     all_errors = get_all_errors()
     return [e for e in all_errors if e.get("model") == model]
 
 
 def get_errors_by_type(error_type: str) -> List[Dict[str, Any]]:
     """Get all errors of a specific type."""
+    if USE_SQLITE_DB:
+        return get_errors_by_type_db(error_type)
+    
+    # JSON backend (legacy)
     all_errors = get_all_errors()
     return [e for e in all_errors if e.get("error_type") == error_type]
 
@@ -89,6 +127,10 @@ def get_error_summary() -> Dict[str, Any]:
     Returns:
         Dict with 'by_model' and 'by_type' breakdowns
     """
+    if USE_SQLITE_DB:
+        return get_error_summary_db()
+    
+    # JSON backend (legacy)
     all_errors = get_all_errors()
 
     by_model: Dict[str, int] = {}
@@ -112,6 +154,16 @@ def get_error_summary() -> Dict[str, Any]:
         "by_type": by_type,
         "by_model_and_type": by_model_and_type
     }
+
+
+def clear_error_catalog():
+    """Clear all errors from the catalog."""
+    if USE_SQLITE_DB:
+        clear_error_catalog_db()
+        return
+    
+    # JSON backend (legacy)
+    save_catalog({"errors": []})
 
 
 def parse_classification_response(response_text: str) -> List[Dict[str, Any]]:
