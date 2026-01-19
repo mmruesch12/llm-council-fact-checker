@@ -181,10 +181,13 @@ export const api = {
   /**
    * Export a conversation to Markdown format.
    * Downloads the file directly to the user's browser.
+   * 
+   * @param {string} conversationId - The ID of the conversation to export
+   * @param {string} mode - Export mode: "all", "final_only", or "rankings_and_final"
    */
-  async exportConversation(conversationId) {
+  async exportConversation(conversationId, mode = 'all') {
     const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}/export`
+      `${API_BASE}/api/conversations/${conversationId}/export?mode=${encodeURIComponent(mode)}`
     );
     if (!response.ok) {
       throw new Error('Failed to export conversation');

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import ErrorCatalog from './components/ErrorCatalog';
+import ExportModal from './components/ExportModal';
 import Login from './components/Login';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './api';
@@ -43,6 +44,9 @@ function App() {
 
   // Fact-checking toggle state
   const [factCheckingEnabled, setFactCheckingEnabled] = useState(true);
+
+  // Export modal state
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Streaming view mode: 'grid' for streaming quadrants, 'tabs' for traditional tab view
   const [streamingViewMode, setStreamingViewMode] = useState('grid');
@@ -172,15 +176,19 @@ function App() {
     setCurrentConversationId(id);
   };
 
-  const handleExportConversation = async () => {
+  const handleExportConversation = async (mode) => {
     if (!currentConversationId) return;
     
     try {
-      await api.exportConversation(currentConversationId);
+      await api.exportConversation(currentConversationId, mode);
     } catch (error) {
       console.error('Failed to export conversation:', error);
       alert('Failed to export conversation. Please try again.');
     }
+  };
+
+  const handleExportButtonClick = () => {
+    setExportModalOpen(true);
   };
 
   const handleSendMessage = async (content) => {
@@ -531,7 +539,12 @@ function App() {
             onViewModeChange={setStreamingViewMode}
             factCheckingEnabled={factCheckingEnabled}
             onFactCheckingToggle={setFactCheckingEnabled}
-            onExportConversation={handleExportConversation}
+            onExportConversation={handleExportButtonClick}
+          />
+          <ExportModal
+            isOpen={exportModalOpen}
+            onClose={() => setExportModalOpen(false)}
+            onExport={handleExportConversation}
           />
         </>
       ) : (
