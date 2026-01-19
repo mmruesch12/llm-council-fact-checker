@@ -180,6 +180,7 @@ Export any conversation to a well-formatted Markdown file. The export includes a
 |--------|----------|-------------|
 | `GET` | `/` | Health check |
 | `GET` | `/api/models` | Get available models and defaults |
+| `POST` | `/api/synthesize` | **NEW:** Synthesize answer from provided or generated responses |
 | `GET` | `/api/conversations` | List all conversations |
 | `POST` | `/api/conversations` | Create new conversation |
 | `GET` | `/api/conversations/{id}` | Get conversation with messages |
@@ -193,6 +194,73 @@ Export any conversation to a well-formatted Markdown file. The export includes a
 | `GET` | `/auth/callback` | OAuth callback handler |
 | `GET` | `/auth/me` | Get current authenticated user |
 | `GET/POST` | `/auth/logout` | Log out current user |
+
+### `/api/synthesize` - Simplified Synthesis Endpoint
+
+This endpoint allows external applications to easily get a synthesized answer from the LLM Council chairman, making the backend callable from any app.
+
+**Use Cases:**
+- Integrate fact-checked synthesis into your own application
+- Provide pre-generated responses and get a chairman's synthesis
+- Run a lightweight council process without the full UI
+
+**Request Body:**
+```json
+{
+  "question": "Your question here",
+  "responses": [  // Optional: provide pre-generated responses
+    {"model": "model-name", "content": "response text"},
+    {"model": "another-model", "content": "another response"}
+  ],
+  "chairman_model": "openai/gpt-4.1",  // Optional: defaults to CHAIRMAN_MODEL
+  "council_models": ["model1", "model2"],  // Optional: used if responses not provided
+  "fact_checking_enabled": false,  // Optional: default false
+  "include_metadata": true  // Optional: default false
+}
+```
+
+**Response:**
+```json
+{
+  "answer": "Synthesized answer from chairman",
+  "chairman_model": "openai/gpt-4.1",
+  "metadata": {  // Only if include_metadata=true
+    "responses_provided": 3,
+    "fact_checking_enabled": false,
+    "full_council_run": false
+  }
+}
+```
+
+**Two Usage Modes:**
+
+1. **Fast Path** (with pre-provided responses):
+   - Provide `question` and `responses`
+   - Chairman synthesizes immediately (Stage 4 only)
+   - Fastest option for external integrations
+
+2. **Full Council** (without pre-provided responses):
+   - Provide only `question` (and optionally `council_models`)
+   - Runs complete council process (Stages 1-4)
+   - Returns final synthesized answer
+
+**Example Usage:**
+
+```python
+import httpx
+
+# Fast path with pre-provided responses
+response = httpx.post("http://localhost:8001/api/synthesize", json={
+    "question": "What causes climate change?",
+    "responses": [
+        {"model": "gpt-4", "content": "Greenhouse gases from human activities..."},
+        {"model": "claude", "content": "Carbon emissions and deforestation..."}
+    ],
+    "chairman_model": "google/gemini-2.5-flash"
+})
+result = response.json()
+print(result["answer"])
+```
 
 ## Tech Stack
 
