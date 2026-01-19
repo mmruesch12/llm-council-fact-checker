@@ -13,6 +13,7 @@ from .config import (
     SESSION_COOKIE_SECURE,
     ALLOWED_GITHUB_USERS,
     FRONTEND_URL,
+    OAUTH_CALLBACK_URL,
 )
 
 # Session serializer
@@ -84,8 +85,8 @@ async def login(request: Request):
     if not is_auth_enabled():
         raise HTTPException(status_code=400, detail="Authentication is not configured")
     
-    # Build callback URL
-    callback_url = str(request.url_for("oauth_callback"))
+    # Build callback URL (use explicit env var if set, otherwise auto-detect)
+    callback_url = OAUTH_CALLBACK_URL or str(request.url_for("oauth_callback"))
     
     # Create OAuth client and get authorization URL
     client = AsyncOAuth2Client(
@@ -130,8 +131,8 @@ async def oauth_callback(request: Request, code: str = None, state: str = None, 
     if not stored_state or stored_state != state:
         return RedirectResponse(url=f"{FRONTEND_URL}?auth_error=invalid_state")
     
-    # Build callback URL
-    callback_url = str(request.url_for("oauth_callback"))
+    # Build callback URL (use explicit env var if set, otherwise auto-detect)
+    callback_url = OAUTH_CALLBACK_URL or str(request.url_for("oauth_callback"))
     
     # Exchange code for token
     client = AsyncOAuth2Client(

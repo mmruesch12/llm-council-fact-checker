@@ -29,6 +29,10 @@ ALLOWED_GITHUB_USERS = [
 # Frontend URL for OAuth callback redirect
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# OAuth callback URL (explicitly set for production, auto-detected in development)
+# Should be set to backend URL, e.g., https://llm-council-api-9zfj.onrender.com/auth/callback
+OAUTH_CALLBACK_URL = os.getenv("OAUTH_CALLBACK_URL")
+
 # Council members - list of OpenRouter model identifiers
 COUNCIL_MODELS = [
     "openai/gpt-5.1",
