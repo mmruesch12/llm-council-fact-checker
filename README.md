@@ -225,8 +225,8 @@ The blueprint creates two services:
 
 | Service | Type | URL |
 |---------|------|-----|
-| `llm-council-api` | Web Service (Python) | `https://llm-council-api.onrender.com` |
-| `llm-council-frontend` | Static Site | `https://llm-council-frontend.onrender.com` |
+| `llm-council-api` | Web Service (Python) | `https://llm-council-api-9zfj.onrender.com` |
+| `llm-council-frontend` | Static Site | `https://llm-council-frontend-ux48.onrender.com` |
 
 ### Environment Variables
 

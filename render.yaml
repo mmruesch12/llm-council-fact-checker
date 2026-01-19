@@ -20,7 +20,7 @@ services:
       - key: ERROR_CLASSIFICATION_ENABLED
         value: "true"
       - key: FRONTEND_URL
-        value: https://llm-council-frontend.onrender.com
+        value: https://llm-council-frontend-ux48.onrender.com
     healthCheckPath: /
 
   # Frontend static site (React/Vite)
@@ -44,4 +44,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://llm-council-api.onrender.com
+        value: https://llm-council-api-9zfj.onrender.com
