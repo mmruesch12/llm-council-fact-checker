@@ -199,6 +199,8 @@ Export any conversation to a well-formatted Markdown file. The export includes a
 
 This endpoint allows external applications to easily get a synthesized answer from the LLM Council chairman, making the backend callable from any app.
 
+📖 **[See complete usage guide and examples →](SYNTHESIZE_API.md)**
+
 **Use Cases:**
 - Integrate fact-checked synthesis into your own application
 - Provide pre-generated responses and get a chairman's synthesis
