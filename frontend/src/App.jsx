@@ -2,8 +2,16 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import ErrorCatalog from './components/ErrorCatalog';
+import Login from './components/Login';
+import { useAuth } from './contexts/AuthContext';
 import { api } from './api';
 import './App.css';
+
+// Local storage keys for model persistence (defined outside component to avoid re-creation)
+const STORAGE_KEYS = {
+  councilModels: 'llm-council-selected-council-models',
+  chairmanModel: 'llm-council-selected-chairman-model',
+};
 
 // Number of optimistic messages added when sending (user + assistant placeholder)
 const OPTIMISTIC_MESSAGES_COUNT = 2;
@@ -20,6 +28,7 @@ function getLastMessageIfValid(prev) {
 }
 
 function App() {
+  const { user, authEnabled, loading: authLoading } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
@@ -38,12 +47,6 @@ function App() {
   // Streaming view mode: 'grid' for streaming quadrants, 'tabs' for traditional tab view
   const [streamingViewMode, setStreamingViewMode] = useState('grid');
 
-  // Local storage keys for model persistence
-  const STORAGE_KEYS = {
-    councilModels: 'llm-council-selected-council-models',
-    chairmanModel: 'llm-council-selected-chairman-model',
-  };
-
   // Streaming state for live parallel responses
   const [streamingState, setStreamingState] = useState({
     isStreaming: false,
@@ -61,55 +64,71 @@ function App() {
     }
   });
 
-  // Load conversations and models on mount
+  // Load conversations and models when user is authenticated
   useEffect(() => {
-    loadConversations();
-    loadModels();
-  }, []);
+    const loadData = async () => {
+      // Load conversations
+      try {
+        const convs = await api.listConversations();
+        setConversations(convs);
+      } catch (error) {
+        console.error('Failed to load conversations:', error);
+      }
+      // Load models
+      try {
+        const data = await api.getModels();
+        const availableModelIds = data.available_models.map(m => m.id);
+        setAvailableModels(data.available_models);
 
-  const loadModels = async () => {
-    try {
-      const data = await api.getModels();
-      const availableModelIds = data.available_models.map(m => m.id);
-      setAvailableModels(data.available_models);
-
-      // Try to restore saved council models from localStorage
-      const savedCouncil = localStorage.getItem(STORAGE_KEYS.councilModels);
-      if (savedCouncil) {
-        try {
-          const parsed = JSON.parse(savedCouncil);
-          // Validate that all saved models still exist in available models
-          const validModels = parsed.filter(id => availableModelIds.includes(id));
-          if (validModels.length > 0) {
-            setCouncilModels(validModels);
-          } else {
+        // Try to restore saved council models from localStorage
+        const savedCouncil = localStorage.getItem(STORAGE_KEYS.councilModels);
+        if (savedCouncil) {
+          try {
+            const parsed = JSON.parse(savedCouncil);
+            const validModels = parsed.filter(id => availableModelIds.includes(id));
+            if (validModels.length > 0) {
+              setCouncilModels(validModels);
+            } else {
+              setCouncilModels(data.default_council);
+            }
+          } catch {
             setCouncilModels(data.default_council);
           }
-        } catch {
+        } else {
           setCouncilModels(data.default_council);
         }
-      } else {
-        setCouncilModels(data.default_council);
-      }
 
-      // Try to restore saved chairman model from localStorage
-      const savedChairman = localStorage.getItem(STORAGE_KEYS.chairmanModel);
-      if (savedChairman && availableModelIds.includes(savedChairman)) {
-        setChairmanModel(savedChairman);
-      } else {
-        setChairmanModel(data.default_chairman);
-      }
+        // Try to restore saved chairman model from localStorage
+        const savedChairman = localStorage.getItem(STORAGE_KEYS.chairmanModel);
+        if (savedChairman && availableModelIds.includes(savedChairman)) {
+          setChairmanModel(savedChairman);
+        } else {
+          setChairmanModel(data.default_chairman);
+        }
 
-      setModelsLoaded(true);
-    } catch (error) {
-      console.error('Failed to load models:', error);
+        setModelsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load models:', error);
+      }
+    };
+    
+    if (user && (!user.auth_disabled || !authEnabled)) {
+      loadData();
     }
-  };
+  }, [user, authEnabled]);
 
   // Load conversation details when selected
   useEffect(() => {
+    const loadConv = async () => {
+      try {
+        const conv = await api.getConversation(currentConversationId);
+        setCurrentConversation(conv);
+      } catch (error) {
+        console.error('Failed to load conversation:', error);
+      }
+    };
     if (currentConversationId) {
-      loadConversation(currentConversationId);
+      loadConv();
     }
   }, [currentConversationId]);
 
@@ -133,15 +152,6 @@ function App() {
       setConversations(convs);
     } catch (error) {
       console.error('Failed to load conversations:', error);
-    }
-  };
-
-  const loadConversation = async (id) => {
-    try {
-      const conv = await api.getConversation(id);
-      setCurrentConversation(conv);
-    } catch (error) {
-      console.error('Failed to load conversation:', error);
     }
   };
 
@@ -481,6 +491,20 @@ function App() {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="app loading-container">
+        <div className="loading-spinner">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show login page if auth is enabled and user is not authenticated
+  if (authEnabled && !user) {
+    return <Login />;
+  }
 
   return (
     <div className="app">
