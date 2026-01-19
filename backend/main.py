@@ -31,7 +31,7 @@ from .council import (
 )
 from . import error_catalog
 from .auth import router as auth_router, require_auth, is_auth_enabled, get_current_user
-from .export import export_conversation_to_markdown
+from .export import export_conversation
 
 app = FastAPI(title="LLM Council API")
 
@@ -136,14 +136,29 @@ async def get_conversation(conversation_id: str, user: dict = Depends(optional_a
 
 
 @app.get("/api/conversations/{conversation_id}/export")
-async def export_conversation(conversation_id: str):
-    """Export a conversation to Markdown format."""
+async def export_conversation_endpoint(
+    conversation_id: str, 
+    mode: str = "all",
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Export a conversation to Markdown format.
+    
+    Args:
+        conversation_id: The conversation to export
+        mode: Export mode - "all" (default), "final_only", or "rankings_and_final"
+    """
+    # Validate mode
+    valid_modes = ["all", "final_only", "rankings_and_final"]
+    if mode not in valid_modes:
+        raise HTTPException(status_code=400, detail=f"Invalid export mode. Must be one of: {', '.join(valid_modes)}")
+    
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     
-    # Generate markdown
-    markdown_content = export_conversation_to_markdown(conversation)
+    # Generate markdown with the specified mode
+    markdown_content = export_conversation(conversation, mode)
     
     # Create a safe filename from the conversation title
     title = conversation.get('title', 'conversation')
