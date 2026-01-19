@@ -54,10 +54,33 @@ LLM Council is a **4-stage deliberation system** where multiple LLMs collaborati
 - `calculate_aggregate_fact_checks()`: Computes consensus accuracy ratings across all fact-checkers
 
 **`storage.py`**
-- JSON-based conversation storage in `data/conversations/`
+- Abstraction layer that supports both SQLite and JSON backends
+- Backend selection controlled by `USE_SQLITE_DB` config flag (defaults to true)
+- For SQLite: delegates to `database.py` functions
+- For JSON: legacy file-based storage in `data/conversations/`
 - Each conversation: `{id, created_at, messages[]}`
 - Assistant messages contain: `{role, stage1, fact_check, stage3, stage4}`
 - Note: metadata (label_to_model, aggregate_rankings, aggregate_fact_checks) is NOT persisted to storage, only returned via API
+
+**`database.py`** (NEW)
+- SQLite implementation for conversation and error storage
+- Tables: conversations, messages, errors (see README for full schema)
+- Context manager `get_db()` for proper connection handling
+- All CRUD operations with proper indexes for performance
+- Stores stage data as JSON text in message columns
+- Supports concurrent access with ACID compliance
+
+**`error_catalog.py`**
+- Abstraction layer that supports both SQLite and JSON backends
+- Backend selection controlled by `USE_SQLITE_DB` config flag
+- For SQLite: delegates to `database.py` functions
+- For JSON: legacy file-based storage in `data/error_catalog.json`
+
+**`migrate_to_sqlite.py`** (NEW)
+- Migration utility to convert JSON data to SQLite
+- Backs up existing JSON files before migration
+- Verifies migration success
+- Can be run with: `python -m backend.migrate_to_sqlite`
 
 **`main.py`**
 - FastAPI app with CORS enabled for localhost:5173 and localhost:3000
@@ -179,6 +202,12 @@ All ReactMarkdown components must be wrapped in `<div className="markdown-conten
 ### Model Configuration
 Models are hardcoded in `backend/config.py`. Chairman can be same or different from council members. The current default is Gemini as chairman per user preference.
 
+### Database Backend
+- SQLite is used by default (`USE_SQLITE_DB=true` in config)
+- Database file: `llm_council.db` at project root
+- For migration from JSON: `python -m backend.migrate_to_sqlite`
+- Both backends share the same interface via `storage.py` and `error_catalog.py`
+
 ## Common Gotchas
 
 1. **Module Import Errors**: Always run backend as `python -m backend.main` from project root, not from backend directory
@@ -200,6 +229,8 @@ Models are hardcoded in `backend/config.py`. Chairman can be same or different f
 
 Use `test_openrouter.py` to verify API connectivity and test different model identifiers before adding to council. The script tests both streaming and non-streaming modes.
 
+Use `test_database.py` to verify SQLite database functionality. The script tests conversation and error catalog CRUD operations.
+
 ## Data Flow Summary
 
 ```
@@ -218,6 +249,8 @@ Aggregate Rankings Calculation → [sorted by avg position]
 Stage 4: Chairman synthesis with full context + fact-check validation
     ↓
 Return: {stage1, fact_check, stage3, stage4, metadata}
+    ↓
+Storage: Save to SQLite (or JSON if USE_SQLITE_DB=false)
     ↓
 Frontend: Display with tabs + validation UI for each stage
 ```

@@ -108,6 +108,7 @@ You can also select models dynamically from the UI sidebar.
 |----------|---------|-------------|
 | `OPENROUTER_API_KEY` | (required) | Your OpenRouter API key |
 | `ERROR_CLASSIFICATION_ENABLED` | `true` | Enable/disable automatic error cataloging |
+| `USE_SQLITE_DB` | `true` | Use SQLite database (true) or JSON files (false) |
 
 ### 5. Authentication (Optional)
 
@@ -198,9 +199,80 @@ Export any conversation to a well-formatted Markdown file. The export includes a
 
 - **Backend:** FastAPI (Python 3.10+), async httpx, Pydantic, OpenRouter API
 - **Frontend:** React 19 + Vite 7, react-markdown for rendering
-- **Storage:** JSON files in `data/conversations/` and `data/error_catalog.json`
+- **Storage:** SQLite database (default) or JSON files (legacy)
 - **Package Management:** uv for Python, npm for JavaScript
 - **Deployment:** Render.com (see Deployment section below)
+
+## Database Storage
+
+The application uses **SQLite** by default for storing conversations and error catalog data. SQLite provides:
+
+- **Zero cost** - No external database service required
+- **Fast queries** - Better performance than JSON for searches and analytics
+- **Reliable** - ACID compliance and proper concurrent access handling
+- **Simple** - Single file database, easy to backup
+- **Portable** - Database file can be easily moved between environments
+
+### Database Configuration
+
+By default, data is stored in `llm_council.db` at the project root. To configure:
+
+```bash
+# In your .env file
+
+# Use SQLite (default: true)
+USE_SQLITE_DB=true
+
+# Or use legacy JSON file storage
+USE_SQLITE_DB=false
+```
+
+### Migrating from JSON to SQLite
+
+If you have existing data in JSON files (`data/conversations/` directory), you can migrate to SQLite:
+
+```bash
+# Run the migration script
+python -m backend.migrate_to_sqlite
+```
+
+The migration script will:
+1. Read all existing JSON conversation files
+2. Read the error catalog JSON file
+3. Import everything into SQLite
+4. Verify the migration was successful
+5. Optionally backup and remove old JSON files
+
+### Database Schema
+
+**Conversations Table:**
+- `id` (TEXT, PRIMARY KEY) - Unique conversation identifier
+- `created_at` (TEXT) - ISO timestamp of creation
+- `title` (TEXT) - Conversation title
+- `user_id` (TEXT) - Optional user identifier (for auth)
+
+**Messages Table:**
+- `id` (INTEGER, PRIMARY KEY) - Auto-incrementing message ID
+- `conversation_id` (TEXT) - Foreign key to conversations
+- `role` (TEXT) - "user" or "assistant"
+- `content` (TEXT) - User message content
+- `stage1_json` (TEXT) - Stage 1 responses (JSON)
+- `fact_check_json` (TEXT) - Fact-check analyses (JSON)
+- `stage3_json` (TEXT) - Peer rankings (JSON)
+- `stage4_json` (TEXT) - Chairman synthesis (JSON)
+- `timestamp` (TEXT) - ISO timestamp
+
+**Errors Table:**
+- `id` (TEXT, PRIMARY KEY) - Unique error identifier
+- `conversation_id` (TEXT) - Foreign key to conversations
+- `model` (TEXT) - Model that made the error
+- `error_type` (TEXT) - Type of error (e.g., "Hallucinated Fact")
+- `claim` (TEXT) - The inaccurate claim
+- `explanation` (TEXT) - Why it's wrong
+- `question_summary` (TEXT) - Brief question summary
+- `timestamp` (TEXT) - ISO timestamp
+
+All tables have appropriate indexes for fast queries by conversation, model, error type, and timestamp.
 
 ## Deployment to Render
 
