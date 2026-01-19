@@ -21,6 +21,8 @@ services:
         value: "true"
       - key: FRONTEND_URL
         value: https://llm-council-frontend-ux48.onrender.com
+      - key: OAUTH_CALLBACK_URL
+        value: https://llm-council-api-9zfj.onrender.com/auth/callback
     healthCheckPath: /
 
   # Frontend static site (React/Vite)

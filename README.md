@@ -114,7 +114,8 @@ You can also select models dynamically from the UI sidebar.
 You can restrict access to the app using GitHub OAuth. Only users on the allow list will be able to access the application.
 
 1. Create a GitHub OAuth App at https://github.com/settings/developers
-   - Set the callback URL to `http://localhost:8001/auth/callback` (or your production URL)
+   - **Important**: Set the callback URL to your **backend** URL: `http://localhost:8001/auth/callback` for local development
+   - For production on Render: `https://llm-council-api-9zfj.onrender.com/auth/callback` (replace with your backend service URL)
 2. Add the following to your `.env` file:
 
 ```bash
@@ -124,7 +125,10 @@ ALLOWED_GITHUB_USERS=username1,username2,username3
 SESSION_SECRET_KEY=your_random_secret_key  # Optional, auto-generated if not set
 SESSION_COOKIE_SECURE=true  # Set to true for HTTPS in production
 FRONTEND_URL=http://localhost:5173  # Your frontend URL
+OAUTH_CALLBACK_URL=http://localhost:8001/auth/callback  # Optional: explicit callback URL (auto-detected if not set)
 ```
+
+**Note**: The OAuth callback URL must point to the **backend** (API) service, not the frontend. In production deployments where backend and frontend are on different domains, set `OAUTH_CALLBACK_URL` explicitly.
 
 When all three auth variables (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_USERS`) are set, authentication is enabled. Otherwise, the app runs without authentication.
 
