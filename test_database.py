@@ -2,13 +2,17 @@
 Simple test script for SQLite database functionality.
 
 Run this to verify the database implementation works correctly.
+
+NOTE: This test explicitly sets USE_SQLITE_DB=true to ensure
+      the SQLite backend is being tested, regardless of .env settings.
 """
 
 import os
 import sys
 import uuid
 
-# Set environment variable to use SQLite
+# Explicitly enable SQLite for this test
+# This ensures we're testing the SQLite backend, not JSON fallback
 os.environ['USE_SQLITE_DB'] = 'true'
 
 from backend.database import (

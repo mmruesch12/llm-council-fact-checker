@@ -3,6 +3,7 @@
 import sqlite3
 import json
 import os
+import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -373,7 +374,6 @@ def add_errors_db(errors: List[Dict[str, Any]]):
         cursor = conn.cursor()
         
         for error in errors:
-            import uuid
             error_id = str(uuid.uuid4())
             timestamp = datetime.utcnow().isoformat()
             
