@@ -97,7 +97,7 @@
   color: #1f2937;
 }
 
-.export-option:has(input[type="radio"]:checked) {
+.export-option.selected {
   border-color: #4a90e2;
   background-color: #eff6ff;
 }
@@ -197,7 +197,7 @@
     background-color: #1e293b;
   }
 
-  .export-option:has(input[type="radio"]:checked) {
+  .export-option.selected {
     border-color: #4a90e2;
     background-color: #1e3a5f;
   }

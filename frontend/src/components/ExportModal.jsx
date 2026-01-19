@@ -42,7 +42,10 @@ export default function ExportModal({ isOpen, onClose, onExport }) {
           
           <div className="export-options">
             {exportOptions.map((option) => (
-              <label key={option.value} className="export-option">
+              <label 
+                key={option.value} 
+                className={`export-option ${selectedMode === option.value ? 'selected' : ''}`}
+              >
                 <input
                   type="radio"
                   name="export-mode"
