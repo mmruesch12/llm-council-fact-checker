@@ -167,6 +167,9 @@ All conversations are automatically saved and can be resumed later. Titles are a
 ### Error Catalog
 Track factual errors across sessions. View error breakdowns by model and by error type to understand each model's strengths and weaknesses.
 
+### Export to Markdown
+Export any conversation to a well-formatted Markdown file. The export includes all 4 stages (individual responses, fact-checking, peer rankings, and final answer) with proper formatting and metadata. Click the "Export" button in the top toolbar to download your conversation.
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
@@ -176,6 +179,7 @@ Track factual errors across sessions. View error breakdowns by model and by erro
 | `GET` | `/api/conversations` | List all conversations |
 | `POST` | `/api/conversations` | Create new conversation |
 | `GET` | `/api/conversations/{id}` | Get conversation with messages |
+| `GET` | `/api/conversations/{id}/export` | Export conversation to Markdown |
 | `POST` | `/api/conversations/{id}/message` | Send message (non-streaming) |
 | `POST` | `/api/conversations/{id}/message/stream` | Send message with SSE streaming |
 | `GET` | `/api/errors` | Get error catalog with summary |

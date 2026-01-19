@@ -179,6 +179,44 @@ export const api = {
   },
 
   /**
+   * Export a conversation to Markdown format.
+   * Downloads the file directly to the user's browser.
+   */
+  async exportConversation(conversationId) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}/export`
+    );
+    if (!response.ok) {
+      throw new Error('Failed to export conversation');
+    }
+    
+    // Get the filename from Content-Disposition header
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'conversation.md';
+    if (contentDisposition) {
+      // Match both quoted (filename="name.md") and unquoted (filename=name.md) formats
+      // First capture group for quoted, second for unquoted
+      const match = contentDisposition.match(/filename=(?:"([^"]+)"|([^;\s]+))/);
+      if (match) {
+        filename = match[1] || match[2];
+      }
+    }
+    
+    // Get the markdown content
+    const blob = await response.blob();
+    
+    // Create a download link and trigger it
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
+
+  /**
    * Send a message and receive streaming updates.
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
