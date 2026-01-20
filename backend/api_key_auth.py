@@ -3,10 +3,8 @@
 import os
 import secrets
 from typing import Optional
-from fastapi import HTTPException, Security, Header
+from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
-
-from .config import SESSION_SECRET_KEY
 
 # API key configuration
 # In production, this should be stored in environment variable

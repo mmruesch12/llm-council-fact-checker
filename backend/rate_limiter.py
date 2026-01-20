@@ -1,6 +1,7 @@
 """Rate limiting middleware for API protection."""
 
 import time
+import threading
 from collections import defaultdict
 from typing import Dict, Tuple
 from fastapi import Request, HTTPException
@@ -25,6 +26,12 @@ class RateLimiter(BaseHTTPMiddleware):
         
         # Storage: {identifier: [(timestamp, endpoint), ...]}
         self.request_history: Dict[str, list] = defaultdict(list)
+        
+        # Thread lock for thread-safe operations
+        self._lock = threading.Lock()
+        
+        # Last cleanup time to prevent excessive cleanup operations
+        self._last_cleanup = time.time()
         
         # Expensive endpoints that need stricter limits
         self.expensive_endpoints = {
@@ -66,10 +73,40 @@ class RateLimiter(BaseHTTPMiddleware):
             (ts, endpoint) for ts, endpoint in self.request_history[identifier]
             if ts > cutoff_time
         ]
+        
+        # If identifier has no recent requests, remove it to prevent memory leak
+        if not self.request_history[identifier]:
+            del self.request_history[identifier]
+    
+    def _cleanup_inactive_identifiers(self, current_time: float):
+        """
+        Periodically clean up identifiers with no recent activity.
+        
+        This prevents unbounded memory growth from inactive users/IPs.
+        Runs at most once per hour to minimize overhead.
+        """
+        # Only cleanup once per hour
+        if current_time - self._last_cleanup < 3600:
+            return
+        
+        self._last_cleanup = current_time
+        window_seconds = 60  # Standard window
+        cutoff_time = current_time - window_seconds
+        
+        # Remove identifiers with no recent requests
+        identifiers_to_remove = [
+            identifier for identifier, history in self.request_history.items()
+            if not history or max(ts for ts, _ in history) < cutoff_time
+        ]
+        
+        for identifier in identifiers_to_remove:
+            del self.request_history[identifier]
     
     def _check_rate_limit(self, identifier: str, path: str, current_time: float) -> Tuple[bool, int, int]:
         """
         Check if request should be rate limited.
+        
+        Thread-safe implementation using locks.
         
         Returns:
             (is_allowed, remaining_requests, reset_seconds)
@@ -78,24 +115,28 @@ class RateLimiter(BaseHTTPMiddleware):
         is_expensive = self._is_expensive_endpoint(path)
         limit = self.expensive_requests_per_minute if is_expensive else self.requests_per_minute
         
-        # Clean old requests
-        self._clean_old_requests(identifier, current_time, window_seconds)
-        
-        # Count requests in current window
-        request_count = len(self.request_history[identifier])
-        
-        # Check limit
-        if request_count >= limit:
-            # Calculate when the oldest request will expire
-            oldest_timestamp = min(ts for ts, _ in self.request_history[identifier])
-            reset_seconds = int(window_seconds - (current_time - oldest_timestamp)) + 1
-            return False, 0, reset_seconds
-        
-        # Add current request
-        self.request_history[identifier].append((current_time, path))
-        remaining = limit - request_count - 1
-        
-        return True, remaining, window_seconds
+        with self._lock:
+            # Periodic cleanup of inactive identifiers
+            self._cleanup_inactive_identifiers(current_time)
+            
+            # Clean old requests
+            self._clean_old_requests(identifier, current_time, window_seconds)
+            
+            # Count requests in current window
+            request_count = len(self.request_history[identifier])
+            
+            # Check limit
+            if request_count >= limit:
+                # Calculate when the oldest request will expire
+                oldest_timestamp = min(ts for ts, _ in self.request_history[identifier])
+                reset_seconds = int(window_seconds - (current_time - oldest_timestamp)) + 1
+                return False, 0, reset_seconds
+            
+            # Add current request
+            self.request_history[identifier].append((current_time, path))
+            remaining = limit - request_count - 1
+            
+            return True, remaining, window_seconds
     
     async def dispatch(self, request: Request, call_next):
         """Process request with rate limiting."""

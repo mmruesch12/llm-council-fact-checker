@@ -98,6 +98,11 @@ ERROR_CATALOG_FILE = "data/error_catalog.json"
 # Feature flag for error classification
 ERROR_CLASSIFICATION_ENABLED = os.getenv("ERROR_CLASSIFICATION_ENABLED", "true").lower() == "true"
 
+# Security: CSP mode for Content-Security-Policy header
+# "strict" = Production mode (no unsafe-inline, unsafe-eval)
+# "relaxed" = Development mode (allows unsafe-inline, unsafe-eval for easier debugging)
+CSP_MODE = os.getenv("CSP_MODE", "relaxed")
+
 # Predefined error taxonomy for fact-checking classification
 ERROR_TYPES = [
     "Hallucinated Fact",        # Made-up information with no basis

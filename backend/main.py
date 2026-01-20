@@ -6,7 +6,7 @@ from urllib.parse import quote
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 import uuid
 import json
@@ -15,7 +15,7 @@ import asyncio
 from . import storage
 from .config import (
     AVAILABLE_MODELS, COUNCIL_MODELS, CHAIRMAN_MODEL, 
-    ERROR_CLASSIFICATION_ENABLED, FRONTEND_URL,
+    ERROR_CLASSIFICATION_ENABLED,
     RATE_LIMIT_GENERAL, RATE_LIMIT_EXPENSIVE
 )
 from .council import (
@@ -38,7 +38,7 @@ from .auth import router as auth_router, require_auth, is_auth_enabled, get_curr
 from .export import export_conversation
 from .rate_limiter import RateLimiter
 from .security_headers import SecurityHeadersMiddleware
-from .api_key_auth import require_api_key, optional_api_key, is_api_key_auth_enabled
+from .api_key_auth import optional_api_key, is_api_key_auth_enabled
 
 app = FastAPI(title="LLM Council API")
 
@@ -96,13 +96,10 @@ class CreateConversationRequest(BaseModel):
 
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
-    content: str
+    content: str = Field(..., max_length=50000)
     council_models: List[str] = None
     chairman_model: str = None
     fact_checking_enabled: bool = True
-    
-    # Validation to prevent abuse - Pydantic v2 syntax
-    model_config = {"str_max_length": 50000}
 
 
 class ConversationMetadata(BaseModel):
@@ -123,15 +120,12 @@ class Conversation(BaseModel):
 
 class SynthesizeRequest(BaseModel):
     """Request to synthesize a final answer from provided or generated responses."""
-    question: str
+    question: str = Field(..., max_length=50000)
     responses: Optional[List[Dict[str, str]]] = None  # Optional: [{"model": "...", "content": "..."}]
     council_models: Optional[List[str]] = None  # Used only if responses not provided
     chairman_model: Optional[str] = None
     fact_checking_enabled: bool = False  # Default to false for simple synthesis
     include_metadata: bool = False  # Whether to return full metadata
-    
-    # Validation to prevent abuse - Pydantic v2 syntax
-    model_config = {"str_max_length": 50000}
 
 
 class SynthesizeResponse(BaseModel):
@@ -192,14 +186,34 @@ async def synthesize_answer(
     Returns:
         SynthesizeResponse with the chairman's synthesized answer
     """
-    # Verify authentication - must have either valid session or API key
-    if is_auth_enabled() and user.get("login") == "anonymous" and not api_key:
+    # Verify authentication - must have either valid session or API key, depending on what is enabled
+    auth_required = is_auth_enabled() or is_api_key_auth_enabled()
+    has_session = user.get("login") != "anonymous"
+    has_api_key = bool(api_key)
+
+    if auth_required and not (has_session or has_api_key):
+        # Tailor error message based on which auth mechanisms are enabled
+        if is_auth_enabled() and is_api_key_auth_enabled():
+            message = (
+                "This endpoint requires either session authentication or an API key. "
+                "Provide a valid API key in the X-API-Key header or authenticate via GitHub OAuth."
+            )
+        elif is_api_key_auth_enabled():
+            message = (
+                "This endpoint requires an API key. "
+                "Provide a valid API key in the X-API-Key header."
+            )
+        else:  # Only session auth is enabled
+            message = (
+                "This endpoint requires session authentication. "
+                "Authenticate via GitHub OAuth to access this endpoint."
+            )
+
         raise HTTPException(
             status_code=401,
             detail={
                 "error": "Authentication required",
-                "message": "This endpoint requires either session authentication or an API key. "
-                          "Provide a valid API key in the X-API-Key header or authenticate via GitHub OAuth."
+                "message": message
             }
         )
     
@@ -660,7 +674,11 @@ async def get_errors(
     **Authentication:** Requires either valid session or API key if auth is enabled.
     """
     # Verify authentication if enabled
-    if is_auth_enabled() and user.get("login") == "anonymous" and not api_key:
+    auth_required = is_auth_enabled() or is_api_key_auth_enabled()
+    has_session = user.get("login") != "anonymous"
+    has_api_key = bool(api_key)
+
+    if auth_required and not (has_session or has_api_key):
         raise HTTPException(
             status_code=401,
             detail="Authentication required"

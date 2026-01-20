@@ -1,5 +1,6 @@
 """Security headers middleware for enhanced protection."""
 
+import os
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from fastapi import Request
@@ -12,6 +13,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     Implements OWASP recommended security headers to protect against
     common web vulnerabilities.
     """
+    
+    def __init__(self, app):
+        super().__init__(app)
+        # Get CSP mode from environment (default: relaxed for development)
+        self.csp_mode = os.getenv("CSP_MODE", "relaxed")
     
     async def dispatch(self, request: Request, call_next):
         """Add security headers to response."""
@@ -29,17 +35,29 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Referrer policy for privacy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         
-        # Content Security Policy (relaxed for development, tighten in production)
-        # Note: Adjust CSP based on your specific needs
-        csp = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: https:; "
-            "font-src 'self' data:; "
-            "connect-src 'self' https://openrouter.ai; "
-            "frame-ancestors 'none';"
-        )
+        # Content Security Policy - configurable for production vs development
+        if self.csp_mode == "strict":
+            # Production mode: Strict CSP without unsafe directives
+            csp = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self' data:; "
+                "connect-src 'self' https://openrouter.ai; "
+                "frame-ancestors 'none';"
+            )
+        else:
+            # Development mode: Relaxed CSP with unsafe directives for easier debugging
+            csp = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self' data:; "
+                "connect-src 'self' https://openrouter.ai; "
+                "frame-ancestors 'none';"
+            )
         response.headers["Content-Security-Policy"] = csp
         
         # Permissions policy (formerly Feature-Policy)
