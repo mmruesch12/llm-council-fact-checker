@@ -230,25 +230,38 @@ async def synthesize_answer(request: SynthesizeRequest, user: dict = Depends(opt
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
 async def list_conversations(user: dict = Depends(optional_auth)):
-    """List all conversations (metadata only)."""
-    return storage.list_conversations()
+    """List all conversations for the current user (metadata only)."""
+    user_id = user.get("login", "anonymous")
+    return storage.list_conversations(user_id)
 
 
 @app.post("/api/conversations", response_model=Conversation)
 async def create_conversation(request: CreateConversationRequest, user: dict = Depends(optional_auth)):
-    """Create a new conversation."""
+    """Create a new conversation for the current user."""
     conversation_id = str(uuid.uuid4())
-    conversation = storage.create_conversation(conversation_id)
+    user_id = user.get("login", "anonymous")
+    conversation = storage.create_conversation(conversation_id, user_id)
     return conversation
 
 
 @app.get("/api/conversations/{conversation_id}", response_model=Conversation)
 async def get_conversation(conversation_id: str, user: dict = Depends(optional_auth)):
-    """Get a specific conversation with all its messages."""
-    conversation = storage.get_conversation(conversation_id)
+    """Get a specific conversation with all its messages (must belong to current user)."""
+    user_id = user.get("login", "anonymous")
+    conversation = storage.get_conversation(conversation_id, user_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
+
+
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str, user: dict = Depends(optional_auth)):
+    """Delete a conversation (must belong to current user)."""
+    user_id = user.get("login", "anonymous")
+    deleted = storage.delete_conversation(conversation_id, user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"status": "ok", "message": "Conversation deleted"}
 
 
 @app.get("/api/conversations/{conversation_id}/export")
@@ -269,7 +282,8 @@ async def export_conversation_endpoint(
     if mode not in valid_modes:
         raise HTTPException(status_code=400, detail=f"Invalid export mode. Must be one of: {', '.join(valid_modes)}")
     
-    conversation = storage.get_conversation(conversation_id)
+    user_id = current_user.get("login", "anonymous")
+    conversation = storage.get_conversation(conversation_id, user_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     
@@ -308,8 +322,10 @@ async def send_message(conversation_id: str, request: SendMessageRequest, user: 
     Send a message and run the 4-stage council process.
     Returns the complete response with all stages.
     """
-    # Check if conversation exists
-    conversation = storage.get_conversation(conversation_id)
+    user_id = user.get("login", "anonymous")
+    
+    # Check if conversation exists and belongs to user
+    conversation = storage.get_conversation(conversation_id, user_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -317,12 +333,12 @@ async def send_message(conversation_id: str, request: SendMessageRequest, user: 
     is_first_message = len(conversation["messages"]) == 0
 
     # Add user message
-    storage.add_user_message(conversation_id, request.content)
+    storage.add_user_message(conversation_id, request.content, user_id)
 
     # If this is the first message, generate a title
     if is_first_message:
         title = await generate_conversation_title(request.content)
-        storage.update_conversation_title(conversation_id, title)
+        storage.update_conversation_title(conversation_id, title, user_id)
 
     # Run the 4-stage council process
     stage1_results, fact_check_results, stage3_results, stage4_result, metadata = await run_full_council(
@@ -351,7 +367,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest, user: 
         stage1_results,
         fact_check_results,
         stage3_results,
-        stage4_result
+        stage4_result,
+        user_id
     )
 
     # Return the complete response with metadata
@@ -371,8 +388,10 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
     Returns Server-Sent Events as each stage completes.
     Supports per-model token streaming via chunk events.
     """
-    # Check if conversation exists
-    conversation = storage.get_conversation(conversation_id)
+    user_id = user.get("login", "anonymous")
+    
+    # Check if conversation exists and belongs to user
+    conversation = storage.get_conversation(conversation_id, user_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -406,7 +425,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
         try:
             # Add user message
-            storage.add_user_message(conversation_id, request.content)
+            storage.add_user_message(conversation_id, request.content, user_id)
 
             # Start title generation in parallel (don't await yet)
             title_task = None
@@ -544,7 +563,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
             # Wait for title generation if it was started
             if title_task:
                 title = await title_task
-                storage.update_conversation_title(conversation_id, title)
+                storage.update_conversation_title(conversation_id, title, user_id)
                 yield f"data: {json.dumps({'type': 'title_complete', 'data': {'title': title}})}\n\n"
 
             # Save complete assistant message
@@ -553,7 +572,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
                 stage1_results,
                 fact_check_results,
                 stage3_results,
-                stage4_result
+                stage4_result,
+                user_id
             )
 
             # Send completion event

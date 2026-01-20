@@ -73,8 +73,11 @@ AVAILABLE_MODELS = [
 # OpenRouter API endpoint
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Data directory for conversation storage
+# Data directory for conversation storage (legacy JSON - kept for migration)
 DATA_DIR = "data/conversations"
+
+# SQLite database path
+DATABASE_PATH = os.getenv("DATABASE_PATH", "data/llm_council.db")
 
 # Error catalog file path
 ERROR_CATALOG_FILE = "data/error_catalog.json"
