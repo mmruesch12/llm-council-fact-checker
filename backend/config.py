@@ -33,6 +33,19 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 # Should be set to backend URL, e.g., https://llm-council-api-9zfj.onrender.com/auth/callback
 OAUTH_CALLBACK_URL = os.getenv("OAUTH_CALLBACK_URL")
 
+# API Key Authentication Configuration
+# API keys for external API access (comma-separated list)
+# Format: sk-council-<64 hex characters>
+# If not set, API key authentication is optional but recommended for /api/synthesize
+API_KEYS = os.getenv("API_KEYS", "")
+
+# Rate Limiting Configuration
+# Maximum requests per minute for general endpoints
+RATE_LIMIT_GENERAL = int(os.getenv("RATE_LIMIT_GENERAL", "60"))
+
+# Maximum requests per minute for expensive endpoints (LLM API calls)
+RATE_LIMIT_EXPENSIVE = int(os.getenv("RATE_LIMIT_EXPENSIVE", "10"))
+
 # Council members - list of OpenRouter model identifiers
 COUNCIL_MODELS = [
     "openai/gpt-5.1",

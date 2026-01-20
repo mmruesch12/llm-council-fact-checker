@@ -13,7 +13,11 @@ import json
 import asyncio
 
 from . import storage
-from .config import AVAILABLE_MODELS, COUNCIL_MODELS, CHAIRMAN_MODEL, ERROR_CLASSIFICATION_ENABLED, FRONTEND_URL
+from .config import (
+    AVAILABLE_MODELS, COUNCIL_MODELS, CHAIRMAN_MODEL, 
+    ERROR_CLASSIFICATION_ENABLED, FRONTEND_URL,
+    RATE_LIMIT_GENERAL, RATE_LIMIT_EXPENSIVE
+)
 from .council import (
     run_full_council,
     generate_conversation_title,
@@ -32,6 +36,9 @@ from .council import (
 from . import error_catalog
 from .auth import router as auth_router, require_auth, is_auth_enabled, get_current_user
 from .export import export_conversation
+from .rate_limiter import RateLimiter
+from .security_headers import SecurityHeadersMiddleware
+from .api_key_auth import require_api_key, optional_api_key, is_api_key_auth_enabled
 
 app = FastAPI(title="LLM Council API")
 
@@ -67,6 +74,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Add rate limiting middleware
+# Configurable via environment variables: RATE_LIMIT_GENERAL and RATE_LIMIT_EXPENSIVE
+app.add_middleware(
+    RateLimiter, 
+    requests_per_minute=RATE_LIMIT_GENERAL, 
+    expensive_requests_per_minute=RATE_LIMIT_EXPENSIVE
+)
+
 # Include auth router
 app.include_router(auth_router)
 
@@ -82,6 +100,11 @@ class SendMessageRequest(BaseModel):
     council_models: List[str] = None
     chairman_model: str = None
     fact_checking_enabled: bool = True
+    
+    # Validation to prevent abuse
+    class Config:
+        # Limit message size to prevent abuse (50KB)
+        max_anystr_length = 50000
 
 
 class ConversationMetadata(BaseModel):
@@ -108,6 +131,11 @@ class SynthesizeRequest(BaseModel):
     chairman_model: Optional[str] = None
     fact_checking_enabled: bool = False  # Default to false for simple synthesis
     include_metadata: bool = False  # Whether to return full metadata
+    
+    # Validation to prevent abuse
+    class Config:
+        # Limit question and response sizes (50KB per field)
+        max_anystr_length = 50000
 
 
 class SynthesizeResponse(BaseModel):
@@ -141,9 +169,17 @@ async def get_models(user: dict = Depends(optional_auth)):
 
 
 @app.post("/api/synthesize", response_model=SynthesizeResponse)
-async def synthesize_answer(request: SynthesizeRequest, user: dict = Depends(optional_auth)):
+async def synthesize_answer(
+    request: SynthesizeRequest, 
+    user: dict = Depends(optional_auth),
+    api_key: str = Depends(optional_api_key)
+):
     """
     Synthesize a final answer from the chairman model.
+    
+    **Authentication:** Requires either:
+    - Valid session authentication (GitHub OAuth), OR
+    - Valid API key in X-API-Key header
     
     This endpoint allows external apps to get a synthesized answer either:
     1. From pre-provided responses (fast path - just runs stage 4)
@@ -160,6 +196,17 @@ async def synthesize_answer(request: SynthesizeRequest, user: dict = Depends(opt
     Returns:
         SynthesizeResponse with the chairman's synthesized answer
     """
+    # Verify authentication - must have either valid session or API key
+    if is_auth_enabled() and user.get("login") == "anonymous" and not api_key:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "Authentication required",
+                "message": "This endpoint requires either session authentication or an API key. "
+                          "Provide a valid API key in the X-API-Key header or authenticate via GitHub OAuth."
+            }
+        )
+    
     chairman = request.chairman_model if request.chairman_model else CHAIRMAN_MODEL
     
     # If responses are provided, use them directly (fast path)
@@ -607,8 +654,22 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
 
 @app.get("/api/errors")
-async def get_errors(user: dict = Depends(optional_auth)):
-    """Get all cataloged errors with summary statistics."""
+async def get_errors(
+    user: dict = Depends(optional_auth),
+    api_key: str = Depends(optional_api_key)
+):
+    """
+    Get all cataloged errors with summary statistics.
+    
+    **Authentication:** Requires either valid session or API key if auth is enabled.
+    """
+    # Verify authentication if enabled
+    if is_auth_enabled() and user.get("login") == "anonymous" and not api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required"
+        )
+    
     return {
         "errors": error_catalog.get_all_errors(),
         "summary": error_catalog.get_error_summary()
@@ -616,8 +677,14 @@ async def get_errors(user: dict = Depends(optional_auth)):
 
 
 @app.delete("/api/errors")
-async def clear_errors(user: dict = Depends(optional_auth)):
-    """Clear all cataloged errors."""
+async def clear_errors(
+    user: dict = Depends(require_auth)
+):
+    """
+    Clear all cataloged errors.
+    
+    **Authentication:** Requires valid session authentication (cannot use API key for destructive operations).
+    """
     error_catalog.save_catalog({"errors": []})
     return {"status": "ok", "message": "Error catalog cleared"}
 
