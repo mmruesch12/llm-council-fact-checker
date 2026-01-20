@@ -147,3 +147,32 @@
   color: var(--text-primary);
   line-height: 1.7;
 }
+
+/* ========================================
+   Mobile Responsiveness
+   ======================================== */
+
+@media (max-width: 768px) {
+  .stage {
+    padding: var(--space-md);
+  }
+  
+  .tabs {
+    gap: 4px;
+    margin-bottom: var(--space-md);
+  }
+  
+  .tab {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 12px;
+    min-width: auto;
+  }
+  
+  .tab-content {
+    padding: var(--space-md);
+  }
+  
+  .model-name {
+    font-size: 11px;
+  }
+}

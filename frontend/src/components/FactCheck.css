@@ -349,3 +349,50 @@
 .most-reliable strong {
   color: var(--success);
 }
+
+/* ========================================
+   Mobile Responsiveness
+   ======================================== */
+
+@media (max-width: 768px) {
+  .aggregate-fact-checks {
+    padding: var(--space-md);
+  }
+  
+  .aggregate-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+  }
+  
+  .response-label {
+    font-size: 12px;
+  }
+  
+  .rating-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+  
+  .fact-check-item {
+    padding: var(--space-md);
+  }
+  
+  .fact-check-header {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+  
+  .tabs {
+    gap: 4px;
+  }
+  
+  .tab {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 12px;
+  }
+  
+  .tab-content {
+    padding: var(--space-md);
+  }
+}

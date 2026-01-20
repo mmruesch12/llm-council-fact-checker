@@ -194,3 +194,43 @@
 .final-text a:hover {
   color: var(--accent-cyan);
 }
+
+/* ========================================
+   Mobile Responsiveness
+   ======================================== */
+
+@media (max-width: 768px) {
+  .final-response {
+    padding: var(--space-md);
+  }
+  
+  .chairman-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+  
+  .final-text {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  
+  .final-text h2 {
+    font-size: 1rem;
+    margin: var(--space-lg) 0 var(--space-sm) 0;
+  }
+  
+  .final-text h3 {
+    font-size: 0.9rem;
+  }
+  
+  .final-text ul,
+  .final-text ol {
+    padding-left: var(--space-lg);
+  }
+  
+  .final-text blockquote {
+    padding: var(--space-sm);
+    margin: var(--space-sm) 0;
+  }
+}
