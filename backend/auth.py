@@ -6,6 +6,7 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 from itsdangerous import URLSafeTimedSerializer, BadSignature
 from typing import Optional
 import time
+import asyncio
 
 from .config import (
     GITHUB_CLIENT_ID,
@@ -32,32 +33,40 @@ GITHUB_USER_URL = "https://api.github.com/user"
 # Server-side OAuth state storage (in-memory cache with TTL)
 # This replaces cookie-based state storage to support mobile browsers that block third-party cookies
 oauth_state_cache = {}
+oauth_state_lock = asyncio.Lock()  # Protect concurrent access to cache
 OAUTH_STATE_TTL = 600  # 10 minutes
+_last_cleanup_time = time.time()
+CLEANUP_INTERVAL = 60  # Cleanup every 60 seconds
 
-def store_oauth_state(state: str) -> None:
+async def store_oauth_state(state: str) -> None:
     """Store OAuth state server-side with expiration time."""
-    oauth_state_cache[state] = time.time() + OAUTH_STATE_TTL
-    # Clean up expired states
-    cleanup_expired_states()
+    async with oauth_state_lock:
+        oauth_state_cache[state] = time.time() + OAUTH_STATE_TTL
+        # Periodic cleanup instead of on every store
+        await _cleanup_if_needed()
 
-def verify_oauth_state(state: str) -> bool:
+async def verify_oauth_state(state: str) -> bool:
     """Verify OAuth state exists and is not expired."""
-    if state not in oauth_state_cache:
-        return False
-    if time.time() > oauth_state_cache[state]:
-        # State expired
+    async with oauth_state_lock:
+        if state not in oauth_state_cache:
+            return False
+        if time.time() > oauth_state_cache[state]:
+            # State expired
+            del oauth_state_cache[state]
+            return False
+        # Valid state - remove it (one-time use)
         del oauth_state_cache[state]
-        return False
-    # Valid state - remove it (one-time use)
-    del oauth_state_cache[state]
-    return True
+        return True
 
-def cleanup_expired_states() -> None:
-    """Remove expired OAuth states from cache."""
+async def _cleanup_if_needed() -> None:
+    """Perform cleanup only if enough time has passed since last cleanup."""
+    global _last_cleanup_time
     current_time = time.time()
-    expired_keys = [k for k, v in oauth_state_cache.items() if current_time > v]
-    for key in expired_keys:
-        del oauth_state_cache[key]
+    if current_time - _last_cleanup_time > CLEANUP_INTERVAL:
+        expired_keys = [k for k, v in oauth_state_cache.items() if current_time > v]
+        for key in expired_keys:
+            del oauth_state_cache[key]
+        _last_cleanup_time = current_time
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -132,7 +141,7 @@ async def login(request: Request):
     )
     
     # Store state server-side for CSRF protection (mobile browsers block cookies in redirect chains)
-    store_oauth_state(state)
+    await store_oauth_state(state)
     
     # Redirect to GitHub authorization
     response = RedirectResponse(url=authorization_url, status_code=302)
@@ -153,7 +162,7 @@ async def oauth_callback(request: Request, code: str = None, state: str = None, 
         return RedirectResponse(url=f"{FRONTEND_URL}?auth_error=no_code")
     
     # Verify state for CSRF protection (now using server-side storage instead of cookies)
-    if not state or not verify_oauth_state(state):
+    if not state or not await verify_oauth_state(state):
         return RedirectResponse(url=f"{FRONTEND_URL}?auth_error=invalid_state")
     
     # Build callback URL (use explicit env var if set, otherwise auto-detect)

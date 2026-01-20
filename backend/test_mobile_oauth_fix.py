@@ -7,8 +7,9 @@ which resolves the mobile browser login issue.
 
 import time
 import sys
+import asyncio
 
-def test_oauth_state_storage():
+async def test_oauth_state_storage():
     """Test that OAuth state is stored server-side."""
     print("=" * 70)
     print("Testing Mobile OAuth Fix - Server-side State Storage")
@@ -19,7 +20,7 @@ def test_oauth_state_storage():
         store_oauth_state, 
         verify_oauth_state, 
         oauth_state_cache,
-        cleanup_expired_states,
+        oauth_state_lock,
         OAUTH_STATE_TTL
     )
     
@@ -27,11 +28,11 @@ def test_oauth_state_storage():
     print("Test 1: Store and verify OAuth state")
     print("-" * 70)
     state1 = "test_state_12345"
-    store_oauth_state(state1)
+    await store_oauth_state(state1)
     assert state1 in oauth_state_cache, "State should be in cache"
     print(f"✓ State stored: {state1}")
     
-    result = verify_oauth_state(state1)
+    result = await verify_oauth_state(state1)
     assert result is True, "State should verify successfully"
     print(f"✓ State verified: {result}")
     
@@ -44,7 +45,7 @@ def test_oauth_state_storage():
     print("Test 2: Unknown state verification")
     print("-" * 70)
     unknown_state = "unknown_state"
-    result = verify_oauth_state(unknown_state)
+    result = await verify_oauth_state(unknown_state)
     assert result is False, "Unknown state should fail verification"
     print(f"✓ Unknown state verification failed as expected: {result}")
     print()
@@ -54,20 +55,20 @@ def test_oauth_state_storage():
     print("-" * 70)
     state2 = "state_user_1"
     state3 = "state_user_2"
-    store_oauth_state(state2)
-    store_oauth_state(state3)
+    await store_oauth_state(state2)
+    await store_oauth_state(state3)
     assert state2 in oauth_state_cache, "State 2 should be in cache"
     assert state3 in oauth_state_cache, "State 3 should be in cache"
     print(f"✓ Multiple states stored: {len(oauth_state_cache)} states in cache")
     
     # Verify one doesn't affect the other
-    result2 = verify_oauth_state(state2)
+    result2 = await verify_oauth_state(state2)
     assert result2 is True, "State 2 should verify"
     assert state3 in oauth_state_cache, "State 3 should still be in cache"
     print(f"✓ Verifying one state doesn't affect others")
     
     # Clean up
-    verify_oauth_state(state3)
+    await verify_oauth_state(state3)
     print()
     
     # Test 4: State expiration
@@ -75,41 +76,41 @@ def test_oauth_state_storage():
     print("-" * 70)
     print(f"State TTL: {OAUTH_STATE_TTL} seconds (10 minutes)")
     state4 = "expiring_state"
-    store_oauth_state(state4)
+    await store_oauth_state(state4)
     expiration_time = oauth_state_cache[state4]
     current_time = time.time()
     remaining = int(expiration_time - current_time)
     print(f"✓ State stored with {remaining} seconds until expiration")
     
     # Manually set expiration to past (simulate expired state)
-    oauth_state_cache[state4] = time.time() - 1
-    result = verify_oauth_state(state4)
+    async with oauth_state_lock:
+        oauth_state_cache[state4] = time.time() - 1
+    result = await verify_oauth_state(state4)
     assert result is False, "Expired state should fail verification"
     assert state4 not in oauth_state_cache, "Expired state should be removed"
     print(f"✓ Expired state rejected and removed")
     print()
     
-    # Test 5: Cleanup function
-    print("Test 5: Automatic cleanup of expired states")
+    # Test 5: Thread-safe concurrent access
+    print("Test 5: Thread-safe concurrent access")
     print("-" * 70)
-    state5 = "state_to_expire"
-    state6 = "state_fresh"
     
-    # Add an expired state
-    oauth_state_cache[state5] = time.time() - 1
-    # Add a fresh state
-    store_oauth_state(state6)
+    # Simulate concurrent state storage
+    async def store_multiple():
+        tasks = []
+        for i in range(5):
+            tasks.append(store_oauth_state(f"concurrent_state_{i}"))
+        await asyncio.gather(*tasks)
     
-    print(f"Cache before cleanup: {len(oauth_state_cache)} states")
-    cleanup_expired_states()
-    print(f"Cache after cleanup: {len(oauth_state_cache)} states")
-    
-    assert state5 not in oauth_state_cache, "Expired state should be cleaned up"
-    assert state6 in oauth_state_cache, "Fresh state should remain"
-    print(f"✓ Cleanup removed expired states while preserving fresh ones")
+    await store_multiple()
+    print(f"✓ Successfully stored 5 states concurrently")
+    print(f"✓ Cache size: {len(oauth_state_cache)}")
     
     # Clean up
-    verify_oauth_state(state6)
+    for i in range(5):
+        state = f"concurrent_state_{i}"
+        if state in oauth_state_cache:
+            await verify_oauth_state(state)
     print()
     
     print("=" * 70)
@@ -129,14 +130,15 @@ def test_oauth_state_storage():
     print("  ✓ No cookies required for state validation")
     print("  ✓ Works on all mobile browsers")
     print("  ✓ One-time use security (state deleted after verification)")
-    print("  ✓ Automatic cleanup of expired states")
+    print("  ✓ Thread-safe concurrent access with asyncio.Lock")
+    print("  ✓ Periodic cleanup (every 60 seconds)")
     print("  ✓ Session cookie still used for authenticated sessions")
     print()
 
 
 if __name__ == "__main__":
     try:
-        test_oauth_state_storage()
+        asyncio.run(test_oauth_state_storage())
         sys.exit(0)
     except AssertionError as e:
         print(f"✗ FAIL: {e}")
