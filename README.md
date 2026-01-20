@@ -108,10 +108,58 @@ You can also select models dynamically from the UI sidebar.
 |----------|---------|-------------|
 | `OPENROUTER_API_KEY` | (required) | Your OpenRouter API key |
 | `ERROR_CLASSIFICATION_ENABLED` | `true` | Enable/disable automatic error cataloging |
+| `API_KEYS` | (optional) | Comma-separated list of API keys for external access (see Security section) |
+| `RATE_LIMIT_GENERAL` | `60` | Max requests per minute for general endpoints |
+| `RATE_LIMIT_EXPENSIVE` | `10` | Max requests per minute for LLM endpoints |
 
-### 5. Authentication (Optional)
+## Security
 
-You can restrict access to the app using GitHub OAuth. Only users on the allow list will be able to access the application.
+The API includes comprehensive security features to protect against abuse and unauthorized access. **See [API_SECURITY.md](API_SECURITY.md) for complete documentation.**
+
+### Quick Security Setup
+
+**For Production (Recommended):**
+
+1. **Enable Authentication** - Choose one or both:
+   ```bash
+   # Option 1: GitHub OAuth (for web UI)
+   GITHUB_CLIENT_ID=your_client_id
+   GITHUB_CLIENT_SECRET=your_client_secret
+   ALLOWED_GITHUB_USERS=username1,username2
+   
+   # Option 2: API Keys (for programmatic access)
+   API_KEYS=sk-council-abc...,sk-council-def...
+   ```
+
+2. **Generate API Keys:**
+   ```bash
+   python -c "from backend.api_key_auth import generate_api_key; print(generate_api_key())"
+   ```
+
+3. **Use API Keys in Requests:**
+   ```bash
+   curl -H "X-API-Key: sk-council-..." http://localhost:8001/api/synthesize
+   ```
+
+**Security Features:**
+- ✅ **Rate Limiting**: 10 req/min for expensive endpoints, 60 req/min for others
+- ✅ **API Key Authentication**: Protect `/api/synthesize` and error endpoints
+- ✅ **Request Size Validation**: 50KB limit to prevent abuse
+- ✅ **Security Headers**: OWASP-recommended headers for all responses
+- ✅ **CORS Protection**: Strict origin validation
+
+**For Development:**
+Authentication is optional. Leave `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_USERS`, and `API_KEYS` unset to disable protection.
+
+📖 **[Complete Security Guide →](API_SECURITY.md)**
+
+### 5. Authentication & API Security (Optional)
+
+The API supports two authentication methods:
+
+#### GitHub OAuth (Session-based - for Web UI)
+
+Restrict access to the app using GitHub OAuth. Only users on the allow list will be able to access the application.
 
 1. Create a GitHub OAuth App at https://github.com/settings/developers
    - **Important**: Set the callback URL to your **backend** URL: `http://localhost:8001/auth/callback` for local development
@@ -130,7 +178,31 @@ OAUTH_CALLBACK_URL=http://localhost:8001/auth/callback  # Optional: explicit cal
 
 **Note**: The OAuth callback URL must point to the **backend** (API) service, not the frontend. In production deployments where backend and frontend are on different domains, set `OAUTH_CALLBACK_URL` explicitly.
 
-When all three auth variables (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_USERS`) are set, authentication is enabled. Otherwise, the app runs without authentication.
+When all three auth variables (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_USERS`) are set, authentication is enabled for the web UI.
+
+#### API Key Authentication (for External API Access)
+
+Protect expensive endpoints like `/api/synthesize` with API keys for programmatic access.
+
+1. Generate an API key:
+   ```bash
+   python -c "from backend.api_key_auth import generate_api_key; print(generate_api_key())"
+   ```
+
+2. Add to your `.env` file:
+   ```bash
+   API_KEYS=sk-council-1234567890abcdef...,sk-council-another-key...
+   ```
+
+3. Use in API requests:
+   ```bash
+   curl -X POST "http://localhost:8001/api/synthesize" \
+     -H "X-API-Key: sk-council-1234567890abcdef..." \
+     -H "Content-Type: application/json" \
+     -d '{"question": "What is AI?"}'
+   ```
+
+📖 **[Complete API Security Guide →](API_SECURITY.md)** - Rate limiting, security headers, best practices, and more.
 
 ## Running the Application
 

@@ -33,6 +33,19 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 # Should be set to backend URL, e.g., https://llm-council-api-9zfj.onrender.com/auth/callback
 OAUTH_CALLBACK_URL = os.getenv("OAUTH_CALLBACK_URL")
 
+# API Key Authentication Configuration
+# API keys for external API access (comma-separated list)
+# Format: sk-council-<64 hex characters>
+# If not set, API key authentication is optional but recommended for /api/synthesize
+API_KEYS = os.getenv("API_KEYS", "")
+
+# Rate Limiting Configuration
+# Maximum requests per minute for general endpoints
+RATE_LIMIT_GENERAL = int(os.getenv("RATE_LIMIT_GENERAL", "60"))
+
+# Maximum requests per minute for expensive endpoints (LLM API calls)
+RATE_LIMIT_EXPENSIVE = int(os.getenv("RATE_LIMIT_EXPENSIVE", "10"))
+
 # Council members - list of OpenRouter model identifiers
 COUNCIL_MODELS = [
     "google/gemini-3-flash-preview",
@@ -84,6 +97,11 @@ ERROR_CATALOG_FILE = "data/error_catalog.json"
 
 # Feature flag for error classification
 ERROR_CLASSIFICATION_ENABLED = os.getenv("ERROR_CLASSIFICATION_ENABLED", "true").lower() == "true"
+
+# Security: CSP mode for Content-Security-Policy header
+# "strict" = Production mode (no unsafe-inline, unsafe-eval)
+# "relaxed" = Development mode (allows unsafe-inline, unsafe-eval for easier debugging)
+CSP_MODE = os.getenv("CSP_MODE", "relaxed")
 
 # Predefined error taxonomy for fact-checking classification
 ERROR_TYPES = [
