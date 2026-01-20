@@ -15,6 +15,10 @@ wheels/
 # Data files
 data/
 
+# Test scripts
+test_*.py
+!backend/test_*.py
+
 # Frontend
 frontend/node_modules/
 frontend/dist/
