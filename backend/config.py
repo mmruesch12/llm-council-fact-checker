@@ -35,14 +35,14 @@ OAUTH_CALLBACK_URL = os.getenv("OAUTH_CALLBACK_URL")
 
 # Council members - list of OpenRouter model identifiers
 COUNCIL_MODELS = [
-    "openai/gpt-5.1",
-    "google/gemini-3-pro-preview",
-    "anthropic/claude-sonnet-4.5",
+    "google/gemini-3-flash-preview",
+    "x-ai/grok-4-fast",
     "x-ai/grok-4.1-fast",
+    "openai/gpt-5-nano",
 ]
 
 # Chairman model - synthesizes final response
-CHAIRMAN_MODEL = "x-ai/grok-4.1-fast"
+CHAIRMAN_MODEL = "x-ai/grok-4-fast"
 
 # All available models for selection (council models are a subset of these)
 AVAILABLE_MODELS = [
