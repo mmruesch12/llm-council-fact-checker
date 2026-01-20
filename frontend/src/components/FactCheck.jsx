@@ -55,7 +55,17 @@ function getFactCheckerDisplayName(fc, factChecks) {
   return shortName;
 }
 
-export default function FactCheck({ factChecks, labelToModel, aggregateFactChecks }) {
+// Calculate grid layout based on number of models
+function getGridLayout(count) {
+  if (count <= 1) return { cols: 1, rows: 1 };
+  if (count === 2) return { cols: 2, rows: 1 };
+  if (count <= 4) return { cols: 2, rows: 2 };
+  if (count <= 6) return { cols: 3, rows: 2 };
+  if (count <= 9) return { cols: 3, rows: 3 };
+  return { cols: 4, rows: Math.ceil(count / 4) };
+}
+
+export default function FactCheck({ factChecks, labelToModel, aggregateFactChecks, viewMode = 'tabs' }) {
   const [activeTab, setActiveTab] = useState(0);
 
   if (!factChecks || factChecks.length === 0) {
@@ -63,7 +73,116 @@ export default function FactCheck({ factChecks, labelToModel, aggregateFactCheck
   }
 
   const showInstances = hasDuplicateModels(factChecks);
+  const layout = getGridLayout(factChecks.length);
 
+  // Grid view
+  if (viewMode === 'grid') {
+    return (
+      <div className="stage fact-check">
+        <h3 className="stage-title">Stage 2: Fact-Checking</h3>
+
+        {/* Aggregate Fact-Check Ratings */}
+        {aggregateFactChecks && aggregateFactChecks.length > 0 && (
+          <div className="aggregate-fact-checks">
+            <h4>Aggregate Accuracy Ratings</h4>
+            <p className="stage-description">
+              Combined fact-check ratings across all reviewers (higher score is better):
+            </p>
+            <div className="aggregate-list">
+              {aggregateFactChecks.map((agg, index) => (
+                <div key={index} className="aggregate-item">
+                  <span className="fact-position">#{index + 1}</span>
+                  <span className="fact-model">
+                    {agg.model.split('/')[1] || agg.model}
+                    {agg.instance !== undefined && ` #${agg.instance + 1}`}
+                  </span>
+                  <span className={`fact-rating ${getRatingClass(agg.consensus_rating)}`}>
+                    {agg.consensus_rating}
+                  </span>
+                  <span className="fact-score">
+                    Score: {agg.average_score}/5
+                  </span>
+                  {agg.most_reliable_votes > 0 && (
+                    <span className="fact-votes">
+                      {agg.most_reliable_votes} "most reliable" vote{agg.most_reliable_votes > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <h4>Individual Fact-Check Analyses</h4>
+        <p className="stage-description">
+          Each model fact-checked all responses (anonymized as Response A, B, C, etc.).
+          Below, model names are shown in <strong>bold</strong> for readability, but the original analysis used anonymous labels.
+        </p>
+
+        <div 
+          className="fact-check-grid"
+          style={{
+            gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
+          }}
+        >
+          {factChecks.map((fc, index) => (
+            <div key={index} className="fact-check-grid-cell">
+              <div className="grid-cell-header">
+                <span className="grid-model-name">
+                  {getFactCheckerDisplayName(fc, factChecks)}
+                </span>
+                <ResponseTime responseTimeMs={fc.response_time_ms} />
+              </div>
+              <div className="grid-cell-content markdown-content">
+                <ReactMarkdown>
+                  {deAnonymizeText(fc.fact_check, labelToModel)}
+                </ReactMarkdown>
+
+                {fc.parsed_summary && (
+                  <div className="parsed-summary">
+                    <strong>Extracted Summary:</strong>
+                    {Object.keys(fc.parsed_summary.ratings).length > 0 && (
+                      <div className="summary-ratings">
+                        {Object.entries(fc.parsed_summary.ratings).map(([label, rating]) => (
+                          <div key={label} className="summary-rating-item">
+                            <span className="summary-label">
+                              {labelToModel && labelToModel[label]
+                                ? getModelDisplayName(labelToModel[label], true)
+                                : label}
+                            </span>
+                            <span className={`summary-rating ${getRatingClass(rating)}`}>
+                              {rating}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {fc.parsed_summary.most_reliable && (
+                      <div className="most-reliable">
+                        <strong>Most Reliable:</strong>{' '}
+                        {labelToModel && labelToModel[fc.parsed_summary.most_reliable]
+                          ? getModelDisplayName(labelToModel[fc.parsed_summary.most_reliable], true)
+                          : fc.parsed_summary.most_reliable}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="grid-cell-footer">
+                <span className="grid-model-full-name">
+                  {fc.model}
+                  {showInstances && fc.instance !== undefined &&
+                    ` (Instance #${fc.instance + 1})`}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Tabs view (default)
   return (
     <div className="stage fact-check">
       <h3 className="stage-title">Stage 2: Fact-Checking</h3>

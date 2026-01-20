@@ -316,3 +316,105 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+/* ========================================
+   Grid View Layout
+   ======================================== */
+
+.ranking-grid {
+  display: grid;
+  gap: 1px;
+  background: var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ranking-grid-cell {
+  background: var(--bg-tertiary);
+  display: flex;
+  flex-direction: column;
+  min-height: 250px;
+  max-height: 500px;
+}
+
+.ranking-grid-cell .grid-cell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.ranking-grid-cell .grid-model-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.ranking-grid-cell .grid-model-name::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-cyan);
+}
+
+.ranking-grid-cell .grid-cell-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ranking-grid-cell .grid-cell-content.markdown-content {
+  padding: var(--space-md);
+}
+
+.ranking-grid-cell .grid-cell-footer {
+  padding: var(--space-xs) var(--space-md);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.ranking-grid-cell .grid-model-full-name {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Scrollbar styling for grid cells */
+.ranking-grid-cell .grid-cell-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ranking-grid-cell .grid-cell-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ranking-grid-cell .grid-cell-content::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: var(--radius-full);
+}
+
+.ranking-grid-cell .grid-cell-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ranking-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ranking-grid-cell {
+    min-height: 200px;
+    max-height: 400px;
+  }
+}

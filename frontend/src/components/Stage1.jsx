@@ -19,7 +19,17 @@ function getDisplayName(resp, responses) {
   return shortName;
 }
 
-export default function Stage1({ responses }) {
+// Calculate grid layout based on number of models
+function getGridLayout(count) {
+  if (count <= 1) return { cols: 1, rows: 1 };
+  if (count === 2) return { cols: 2, rows: 1 };
+  if (count <= 4) return { cols: 2, rows: 2 };
+  if (count <= 6) return { cols: 3, rows: 2 };
+  if (count <= 9) return { cols: 3, rows: 3 };
+  return { cols: 4, rows: Math.ceil(count / 4) };
+}
+
+export default function Stage1({ responses, viewMode = 'tabs' }) {
   const [activeTab, setActiveTab] = useState(0);
 
   if (!responses || responses.length === 0) {
@@ -27,7 +37,46 @@ export default function Stage1({ responses }) {
   }
 
   const showInstances = hasDuplicateModels(responses);
+  const layout = getGridLayout(responses.length);
 
+  // Grid view
+  if (viewMode === 'grid') {
+    return (
+      <div className="stage stage1">
+        <h3 className="stage-title">Stage 1: Individual Responses</h3>
+        
+        <div 
+          className="response-grid"
+          style={{
+            gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
+          }}
+        >
+          {responses.map((resp, index) => (
+            <div key={index} className="response-grid-cell">
+              <div className="grid-cell-header">
+                <span className="grid-model-name">
+                  {getDisplayName(resp, responses)}
+                </span>
+                <ResponseTime responseTimeMs={resp.response_time_ms} />
+              </div>
+              <div className="grid-cell-content markdown-content">
+                <ReactMarkdown>{resp.response}</ReactMarkdown>
+              </div>
+              <div className="grid-cell-footer">
+                <span className="grid-model-full-name">
+                  {resp.model}
+                  {showInstances && resp.instance !== undefined &&
+                    ` (Instance #${resp.instance + 1})`}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Tabs view (default)
   return (
     <div className="stage stage1">
       <h3 className="stage-title">Stage 1: Individual Responses</h3>

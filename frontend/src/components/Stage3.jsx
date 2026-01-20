@@ -45,7 +45,17 @@ function getRankerDisplayName(rank, rankings) {
   return shortName;
 }
 
-export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
+// Calculate grid layout based on number of models
+function getGridLayout(count) {
+  if (count <= 1) return { cols: 1, rows: 1 };
+  if (count === 2) return { cols: 2, rows: 1 };
+  if (count <= 4) return { cols: 2, rows: 2 };
+  if (count <= 6) return { cols: 3, rows: 2 };
+  if (count <= 9) return { cols: 3, rows: 3 };
+  return { cols: 4, rows: Math.ceil(count / 4) };
+}
+
+export default function Stage3({ rankings, labelToModel, aggregateRankings, viewMode = 'tabs' }) {
   const [activeTab, setActiveTab] = useState(0);
 
   if (!rankings || rankings.length === 0) {
@@ -53,7 +63,95 @@ export default function Stage3({ rankings, labelToModel, aggregateRankings }) {
   }
 
   const showInstances = hasDuplicateModels(rankings);
+  const layout = getGridLayout(rankings.length);
 
+  // Grid view
+  if (viewMode === 'grid') {
+    return (
+      <div className="stage stage2">
+        <h3 className="stage-title">Stage 3: Peer Rankings</h3>
+
+        {aggregateRankings && aggregateRankings.length > 0 && (
+          <div className="aggregate-rankings">
+            <h4>Aggregate Rankings (Street Cred)</h4>
+            <p className="stage-description">
+              Combined results across all peer evaluations (lower score is better):
+            </p>
+            <div className="aggregate-list">
+              {aggregateRankings.map((agg, index) => (
+                <div key={index} className="aggregate-item">
+                  <span className="rank-position">#{index + 1}</span>
+                  <span className="rank-model">
+                    {agg.model.split('/')[1] || agg.model}
+                    {agg.instance !== undefined && ` #${agg.instance + 1}`}
+                  </span>
+                  <span className="rank-score">
+                    Avg: {agg.average_rank.toFixed(2)}
+                  </span>
+                  <span className="rank-count">
+                    ({agg.rankings_count} votes)
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <h4>Individual Evaluations</h4>
+        <p className="stage-description">
+          Each model ranked all responses after reviewing the fact-check analyses.
+          Below, model names are shown in <strong>bold</strong> for readability, but the original evaluation used anonymous labels.
+        </p>
+
+        <div 
+          className="ranking-grid"
+          style={{
+            gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
+          }}
+        >
+          {rankings.map((rank, index) => (
+            <div key={index} className="ranking-grid-cell">
+              <div className="grid-cell-header">
+                <span className="grid-model-name">
+                  {getRankerDisplayName(rank, rankings)}
+                </span>
+                <ResponseTime responseTimeMs={rank.response_time_ms} />
+              </div>
+              <div className="grid-cell-content markdown-content">
+                <ReactMarkdown>
+                  {deAnonymizeText(rank.ranking, labelToModel)}
+                </ReactMarkdown>
+                
+                {rank.parsed_ranking && rank.parsed_ranking.length > 0 && (
+                  <div className="parsed-ranking">
+                    <strong>Extracted Ranking:</strong>
+                    <ol>
+                      {rank.parsed_ranking.map((label, i) => (
+                        <li key={i}>
+                          {labelToModel && labelToModel[label]
+                            ? getModelDisplayName(labelToModel[label], true)
+                            : label}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </div>
+              <div className="grid-cell-footer">
+                <span className="grid-model-full-name">
+                  {rank.model}
+                  {showInstances && rank.instance !== undefined &&
+                    ` (Instance #${rank.instance + 1})`}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Tabs view (default)
   return (
     <div className="stage stage2">
       <h3 className="stage-title">Stage 3: Peer Rankings</h3>
