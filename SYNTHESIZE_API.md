@@ -26,11 +26,11 @@ import httpx
 # Your existing responses from various sources
 responses = [
     {
-        "model": "openai/gpt-5.1",
+        "model": "google/gemini-3-flash-preview",
         "content": "The sky appears blue due to Rayleigh scattering..."
     },
     {
-        "model": "anthropic/claude-sonnet-4.5",
+        "model": "x-ai/grok-4-fast",
         "content": "Blue sky color results from atmospheric scattering..."
     }
 ]
@@ -39,7 +39,7 @@ responses = [
 response = httpx.post("http://localhost:8001/api/synthesize", json={
     "question": "Why is the sky blue?",
     "responses": responses,
-    "chairman_model": "x-ai/grok-4.1-fast"
+    "chairman_model": "x-ai/grok-4-fast"
 })
 
 result = response.json()
@@ -57,11 +57,12 @@ import httpx
 response = httpx.post("http://localhost:8001/api/synthesize", json={
     "question": "What is quantum computing?",
     "council_models": [
-        "openai/gpt-5.1",
-        "google/gemini-3-pro-preview",
-        "anthropic/claude-sonnet-4.5"
+        "google/gemini-3-flash-preview",
+        "x-ai/grok-4-fast",
+        "x-ai/grok-4.1-fast",
+        "openai/gpt-5-nano"
     ],
-    "chairman_model": "x-ai/grok-4.1-fast",
+    "chairman_model": "x-ai/grok-4-fast",
     "fact_checking_enabled": True,
     "include_metadata": True
 })
@@ -108,18 +109,18 @@ async def get_responses_from_multiple_sources(question):
     # Example: call different APIs
     responses = []
     
-    # Source 1: OpenAI
-    openai_response = await call_openai_api(question)
+    # Source 1: Gemini
+    gemini_response = await call_gemini_api(question)
     responses.append({
-        "model": "openai/gpt-5.1",
-        "content": openai_response
+        "model": "google/gemini-3-flash-preview",
+        "content": gemini_response
     })
     
-    # Source 2: Anthropic
-    anthropic_response = await call_anthropic_api(question)
+    # Source 2: Grok
+    grok_response = await call_grok_api(question)
     responses.append({
-        "model": "anthropic/claude-sonnet-4.5",
-        "content": anthropic_response
+        "model": "x-ai/grok-4-fast",
+        "content": grok_response
     })
     
     return responses
@@ -136,7 +137,7 @@ async def synthesize_answer(question):
             json={
                 "question": question,
                 "responses": responses,
-                "chairman_model": "x-ai/grok-4.1-fast"
+                "chairman_model": "x-ai/grok-4-fast"
             }
         )
         return result.json()
@@ -188,7 +189,7 @@ class ChatbotWithSynthesis:
         # Option 1: Full council (slower, more comprehensive)
         response = httpx.post(self.api_url, json={
             "question": user_question,
-            "council_models": ["openai/gpt-5.1", "anthropic/claude-sonnet-4.5"],
+            "council_models": ["google/gemini-3-flash-preview", "x-ai/grok-4-fast", "openai/gpt-5-nano"],
             "fact_checking_enabled": False  # Faster without fact-checking
         })
         

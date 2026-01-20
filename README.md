@@ -81,14 +81,14 @@ Edit `backend/config.py` to customize the council:
 ```python
 # Council members who provide responses, fact-check, and rank
 COUNCIL_MODELS = [
-    "openai/gpt-5.1",
-    "google/gemini-3-pro-preview",
-    "anthropic/claude-sonnet-4.5",
+    "google/gemini-3-flash-preview",
+    "x-ai/grok-4-fast",
     "x-ai/grok-4.1-fast",
+    "openai/gpt-5-nano",
 ]
 
 # Chairman who synthesizes the final answer
-CHAIRMAN_MODEL = "x-ai/grok-4.1-fast"
+CHAIRMAN_MODEL = "x-ai/grok-4-fast"
 ```
 
 **Available models include:**
@@ -214,7 +214,7 @@ This endpoint allows external applications to easily get a synthesized answer fr
     {"model": "model-name", "content": "response text"},
     {"model": "another-model", "content": "another response"}
   ],
-  "chairman_model": "x-ai/grok-4.1-fast",  // Optional: defaults to CHAIRMAN_MODEL
+  "chairman_model": "x-ai/grok-4-fast",  // Optional: defaults to CHAIRMAN_MODEL
   "council_models": ["model1", "model2"],  // Optional: used if responses not provided
   "fact_checking_enabled": false,  // Optional: default false
   "include_metadata": true  // Optional: default false
@@ -225,7 +225,7 @@ This endpoint allows external applications to easily get a synthesized answer fr
 ```json
 {
   "answer": "Synthesized answer from chairman",
-  "chairman_model": "x-ai/grok-4.1-fast",
+  "chairman_model": "x-ai/grok-4-fast",
   "metadata": {  // Only if include_metadata=true
     "responses_provided": 3,
     "fact_checking_enabled": false,
@@ -255,10 +255,10 @@ import httpx
 response = httpx.post("http://localhost:8001/api/synthesize", json={
     "question": "What causes climate change?",
     "responses": [
-        {"model": "openai/gpt-5.1", "content": "Greenhouse gases from human activities..."},
-        {"model": "anthropic/claude-sonnet-4.5", "content": "Carbon emissions and deforestation..."}
+        {"model": "google/gemini-3-flash-preview", "content": "Greenhouse gases from human activities..."},
+        {"model": "x-ai/grok-4-fast", "content": "Carbon emissions and deforestation..."}
     ],
-    "chairman_model": "x-ai/grok-4.1-fast"
+    "chairman_model": "x-ai/grok-4-fast"
 })
 result = response.json()
 print(result["answer"])
