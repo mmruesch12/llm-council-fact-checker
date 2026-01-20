@@ -20,10 +20,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Prevent clickjacking attacks
         response.headers["X-Frame-Options"] = "DENY"
         
-        # Enable XSS protection in older browsers
+        # Prevent MIME type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
         
-        # Prevent MIME type sniffing
+        # Enable XSS protection in older browsers (legacy header)
         response.headers["X-XSS-Protection"] = "1; mode=block"
         
         # Referrer policy for privacy
