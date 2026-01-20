@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../api';
+import { isApiConnectionError } from '../utils/errorUtils';
 
 const AuthContext = createContext(null);
 
@@ -50,16 +51,8 @@ export function AuthProvider({ children }) {
       }
     } catch (err) {
       console.error('Auth check failed:', err);
-      // Check if this is a network/CORS error (can't reach API at all)
-      const errorMessage = err.message || '';
-      const isCorsError = errorMessage.includes('CORS') || 
-                          errorMessage.includes('cors') || 
-                          errorMessage.includes('Access-Control');
-      const isNetworkError = errorMessage.includes('Failed to fetch') ||
-                             errorMessage.includes('NetworkError') ||
-                             errorMessage.includes('network');
-      
-      if (isCorsError || isNetworkError) {
+      // Check if this is a critical connection error (CORS or network)
+      if (isApiConnectionError(err)) {
         // Critical error - can't reach API
         setError(err);
         setUser(null);

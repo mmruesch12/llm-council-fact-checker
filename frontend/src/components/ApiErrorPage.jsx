@@ -1,17 +1,13 @@
 import './ApiErrorPage.css';
+import { isCorsError, isNetworkError } from '../utils/errorUtils';
 
 /**
  * Error page displayed when the API is unreachable (e.g., CORS errors, network issues).
  * Provides clear feedback to the user and troubleshooting information.
  */
 function ApiErrorPage({ error, apiUrl }) {
-  const isCorsError = error?.message?.includes('CORS') || 
-                      error?.message?.includes('cors') ||
-                      error?.message?.includes('Access-Control');
-  
-  const isNetworkError = error?.message?.includes('Failed to fetch') ||
-                         error?.message?.includes('NetworkError') ||
-                         error?.message?.includes('network');
+  const corsError = isCorsError(error);
+  const networkError = isNetworkError(error);
 
   return (
     <div className="api-error-page">
@@ -27,13 +23,13 @@ function ApiErrorPage({ error, apiUrl }) {
         <h1 className="api-error-title">Unable to Connect to API</h1>
         
         <p className="api-error-description">
-          {isCorsError && (
+          {corsError && (
             <>The application cannot connect to the backend API due to a <strong>CORS configuration issue</strong>.</>
           )}
-          {isNetworkError && !isCorsError && (
+          {networkError && !corsError && (
             <>The application cannot connect to the backend API. Please check your network connection.</>
           )}
-          {!isCorsError && !isNetworkError && (
+          {!corsError && !networkError && (
             <>The application cannot connect to the backend API.</>
           )}
         </p>
@@ -52,7 +48,7 @@ function ApiErrorPage({ error, apiUrl }) {
           )}
         </div>
 
-        {isCorsError && (
+        {corsError && (
           <div className="api-error-solution">
             <h2>How to Fix This</h2>
             <p>The backend needs to be configured to allow requests from this domain:</p>
@@ -67,7 +63,7 @@ function ApiErrorPage({ error, apiUrl }) {
           </div>
         )}
 
-        {isNetworkError && !isCorsError && (
+        {networkError && !corsError && (
           <div className="api-error-solution">
             <h2>What to Check</h2>
             <ul>
