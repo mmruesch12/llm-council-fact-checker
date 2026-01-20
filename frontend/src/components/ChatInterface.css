@@ -300,6 +300,33 @@
   z-index: 10;
 }
 
+/* Hamburger menu (hidden on desktop) */
+.hamburger-menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.hamburger-menu:hover {
+  background: var(--glass-highlight);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.hamburger-menu:active {
+  transform: scale(0.95);
+}
+
 .toggle-label {
   font-size: 12px;
   color: var(--text-tertiary);
@@ -438,5 +465,87 @@
   50% {
     border-color: rgba(139, 92, 246, 0.5);
     box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+  }
+}
+
+/* ========================================
+   Mobile Responsiveness
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Show hamburger menu on mobile */
+  .hamburger-menu {
+    display: flex;
+  }
+  
+  /* Add hamburger menu button */
+  .chat-interface {
+    position: relative;
+  }
+  
+  /* Reduce padding on mobile */
+  .messages-container {
+    padding: var(--space-md);
+  }
+  
+  /* Make user messages full width on mobile */
+  .user-message .message-content {
+    max-width: 100%;
+  }
+  
+  /* Adjust view mode toggle for mobile */
+  .view-mode-toggle {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+  }
+  
+  .toggle-group {
+    flex-wrap: wrap;
+  }
+  
+  .toggle-separator {
+    display: none;
+  }
+  
+  .toggle-label {
+    font-size: 11px;
+  }
+  
+  .toggle-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  
+  .export-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  
+  /* Optimize input form for mobile */
+  .input-form {
+    padding: var(--space-md);
+    gap: var(--space-sm);
+  }
+  
+  .message-input {
+    font-size: 16px; /* Prevent zoom on iOS */
+    min-height: 48px;
+  }
+  
+  .send-button {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 14px;
+    min-height: 48px;
+  }
+  
+  /* Adjust empty state */
+  .empty-state h2 {
+    font-size: 1.5rem;
+  }
+  
+  .empty-state p {
+    font-size: 0.9rem;
+    padding: 0 var(--space-md);
   }
 }

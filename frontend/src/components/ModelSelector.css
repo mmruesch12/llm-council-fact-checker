@@ -244,3 +244,22 @@
   font-weight: 600;
   border-radius: var(--radius-full);
 }
+
+/* ========================================
+   Mobile Responsiveness
+   ======================================== */
+
+@media (max-width: 768px) {
+  .model-selector {
+    max-height: 50vh; /* Limit height on mobile */
+    overflow-y: auto;
+  }
+  
+  .model-selector-content {
+    max-height: 40vh;
+  }
+  
+  .model-groups {
+    max-height: 200px;
+  }
+}

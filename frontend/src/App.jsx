@@ -52,6 +52,9 @@ function App() {
   // Streaming view mode: 'grid' for streaming quadrants, 'tabs' for traditional tab view
   const [streamingViewMode, setStreamingViewMode] = useState('grid');
 
+  // Mobile sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // Streaming state for live parallel responses
   const [streamingState, setStreamingState] = useState({
     isStreaming: false,
@@ -522,20 +525,32 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${sidebarOpen ? 'sidebar-open' : ''}`} onClick={(e) => {
+      // Close sidebar when clicking on backdrop
+      if (sidebarOpen && e.target.classList.contains('app')) {
+        setSidebarOpen(false);
+      }
+    }}>
       {currentView === 'chat' ? (
         <>
           <Sidebar
             conversations={conversations}
             currentConversationId={currentConversationId}
-            onSelectConversation={handleSelectConversation}
-            onNewConversation={handleNewConversation}
+            onSelectConversation={(id) => {
+              handleSelectConversation(id);
+              setSidebarOpen(false); // Close sidebar after selecting conversation on mobile
+            }}
+            onNewConversation={() => {
+              handleNewConversation();
+              setSidebarOpen(false); // Close sidebar after creating conversation on mobile
+            }}
             availableModels={availableModels}
             councilModels={councilModels}
             chairmanModel={chairmanModel}
             onCouncilChange={setCouncilModels}
             onChairmanChange={setChairmanModel}
             onNavigateToErrors={() => setCurrentView('errors')}
+            onClose={() => setSidebarOpen(false)}
           />
           <ChatInterface
             conversation={currentConversation}
@@ -547,6 +562,7 @@ function App() {
             factCheckingEnabled={factCheckingEnabled}
             onFactCheckingToggle={setFactCheckingEnabled}
             onExportConversation={handleExportButtonClick}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           />
           <ExportModal
             isOpen={exportModalOpen}
