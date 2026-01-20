@@ -233,7 +233,7 @@ export default function ChatInterface({
                       badge="01"
                       defaultExpanded={false}
                     >
-                      <Stage1 responses={msg.stage1} />
+                      <Stage1 responses={msg.stage1} viewMode={streamingViewMode} />
                     </Accordion>
                   )}
 
@@ -264,6 +264,7 @@ export default function ChatInterface({
                         factChecks={msg.fact_check}
                         labelToModel={msg.metadata?.label_to_model}
                         aggregateFactChecks={msg.metadata?.aggregate_fact_checks}
+                        viewMode={streamingViewMode}
                       />
                     </Accordion>
                   )}
@@ -298,6 +299,7 @@ export default function ChatInterface({
                         rankings={msg.stage3}
                         labelToModel={msg.metadata?.label_to_model}
                         aggregateRankings={msg.metadata?.aggregate_rankings}
+                        viewMode={streamingViewMode}
                       />
                     </Accordion>
                   )}
