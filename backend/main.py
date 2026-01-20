@@ -101,10 +101,8 @@ class SendMessageRequest(BaseModel):
     chairman_model: str = None
     fact_checking_enabled: bool = True
     
-    # Validation to prevent abuse
-    class Config:
-        # Limit message size to prevent abuse (50KB)
-        max_anystr_length = 50000
+    # Validation to prevent abuse - Pydantic v2 syntax
+    model_config = {"str_max_length": 50000}
 
 
 class ConversationMetadata(BaseModel):
@@ -132,10 +130,8 @@ class SynthesizeRequest(BaseModel):
     fact_checking_enabled: bool = False  # Default to false for simple synthesis
     include_metadata: bool = False  # Whether to return full metadata
     
-    # Validation to prevent abuse
-    class Config:
-        # Limit question and response sizes (50KB per field)
-        max_anystr_length = 50000
+    # Validation to prevent abuse - Pydantic v2 syntax
+    model_config = {"str_max_length": 50000}
 
 
 class SynthesizeResponse(BaseModel):
