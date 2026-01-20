@@ -10,7 +10,7 @@ from .config import SESSION_SECRET_KEY
 
 # API key configuration
 # In production, this should be stored in environment variable
-# Format: "sk-council-" + 32 random hex characters
+# Format: "sk-council-" + 64 random hex characters (generated via secrets.token_hex(32), 256 bits)
 API_KEY_PREFIX = "sk-council-"
 API_KEY_ENV_VAR = "API_KEY"
 
