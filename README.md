@@ -311,6 +311,7 @@ The blueprint creates two services:
 | `PYTHON_VERSION` | No | Python version (defaults to 3.11) |
 | `ERROR_CLASSIFICATION_ENABLED` | No | Enable error cataloging (defaults to true) |
 | `FRONTEND_URL` | No | Frontend URL for CORS (auto-configured in blueprint) |
+| `ADDITIONAL_CORS_ORIGINS` | No | Comma-separated list of additional allowed origins (e.g., `https://mattruesch.com,https://example.com`) |
 
 #### Frontend (`llm-council-frontend`)
 | Variable | Required | Description |
@@ -321,8 +322,15 @@ The blueprint creates two services:
 
 To use a custom domain:
 1. Add your domain in the Render dashboard for each service
-2. Update the `FRONTEND_URL` environment variable on the backend
-3. Update the `VITE_API_URL` environment variable on the frontend (requires rebuild)
+2. Update the `FRONTEND_URL` environment variable on the backend to your custom frontend domain
+3. **OR** add your custom domain to `ADDITIONAL_CORS_ORIGINS` on the backend (e.g., `https://mattruesch.com`)
+4. Update the `VITE_API_URL` environment variable on the frontend to point to your backend (requires rebuild)
+
+**Example CORS Configuration:**
+- Single custom domain: Set `FRONTEND_URL=https://mattruesch.com`
+- Multiple domains: Set `ADDITIONAL_CORS_ORIGINS=https://mattruesch.com,https://example.com`
+
+**Note:** If you see a CORS error when accessing the app, the frontend will display an error page with troubleshooting steps. Make sure your custom domain is added to the backend's allowed origins.
 
 ## Project Structure
 
