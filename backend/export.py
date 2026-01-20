@@ -62,7 +62,7 @@ def export_final_answer_only(conversation: Dict[str, Any]) -> str:
                 lines.append("### Final Council Answer")
                 lines.append("")
                 model_name = stage4.get('model', 'Unknown Model')
-                content = stage4.get('content', '')
+                content = stage4.get('response', '')
                 response_time = stage4.get('response_time_ms')
                 
                 lines.append(f"**Chairman: {model_name}**")
@@ -116,7 +116,7 @@ def export_rankings_and_final(conversation: Dict[str, Any]) -> str:
                 lines.append("")
                 for ranking in stage3:
                     model_name = ranking.get('model', 'Unknown Model')
-                    content = ranking.get('content', '')
+                    content = ranking.get('ranking', '')
                     
                     lines.append(f"**Ranker: {model_name}**")
                     lines.append("")
@@ -140,7 +140,7 @@ def export_rankings_and_final(conversation: Dict[str, Any]) -> str:
                 lines.append("#### Final Council Answer")
                 lines.append("")
                 model_name = stage4.get('model', 'Unknown Model')
-                content = stage4.get('content', '')
+                content = stage4.get('response', '')
                 response_time = stage4.get('response_time_ms')
                 
                 lines.append(f"**Chairman: {model_name}**")
@@ -197,7 +197,7 @@ def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
                 lines.append("")
                 for response in stage1:
                     model_name = response.get('model', 'Unknown Model')
-                    content = response.get('content', '')
+                    content = response.get('response', '')
                     response_time = response.get('response_time_ms')
                     
                     lines.append(f"**{model_name}**")
@@ -216,7 +216,7 @@ def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
                 lines.append("")
                 for fc in fact_check:
                     model_name = fc.get('model', 'Unknown Model')
-                    content = fc.get('content', '')
+                    content = fc.get('fact_check', '')
                     
                     lines.append(f"**Fact-Checker: {model_name}**")
                     lines.append("")
@@ -243,7 +243,7 @@ def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
                 lines.append("")
                 for ranking in stage3:
                     model_name = ranking.get('model', 'Unknown Model')
-                    content = ranking.get('content', '')
+                    content = ranking.get('ranking', '')
                     
                     lines.append(f"**Ranker: {model_name}**")
                     lines.append("")
@@ -267,7 +267,7 @@ def export_conversation_to_markdown(conversation: Dict[str, Any]) -> str:
                 lines.append("#### Stage 4: Final Council Answer")
                 lines.append("")
                 model_name = stage4.get('model', 'Unknown Model')
-                content = stage4.get('content', '')
+                content = stage4.get('response', '')
                 response_time = stage4.get('response_time_ms')
                 
                 lines.append(f"**Chairman: {model_name}**")
