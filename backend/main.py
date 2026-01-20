@@ -46,6 +46,17 @@ frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
     cors_origins.append(frontend_url)
 
+# Add any additional allowed origins (comma-separated)
+additional_origins = os.getenv("ADDITIONAL_CORS_ORIGINS", "")
+if additional_origins:
+    for origin in additional_origins.split(","):
+        origin = origin.strip()
+        # Validate that origin is a properly formatted URL
+        if origin and (origin.startswith("http://") or origin.startswith("https://")):
+            cors_origins.append(origin)
+        elif origin:
+            print(f"Warning: Skipping invalid CORS origin (must start with http:// or https://): {origin}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,

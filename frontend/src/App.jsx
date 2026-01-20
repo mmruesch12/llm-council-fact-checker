@@ -4,6 +4,7 @@ import ChatInterface from './components/ChatInterface';
 import ErrorCatalog from './components/ErrorCatalog';
 import ExportModal from './components/ExportModal';
 import Login from './components/Login';
+import ApiErrorPage from './components/ApiErrorPage';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './api';
 import './App.css';
@@ -29,7 +30,7 @@ function getLastMessageIfValid(prev) {
 }
 
 function App() {
-  const { user, authEnabled, loading: authLoading } = useAuth();
+  const { user, authEnabled, loading: authLoading, error: authError } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
@@ -507,6 +508,12 @@ function App() {
         <div className="loading-spinner">Loading...</div>
       </div>
     );
+  }
+
+  // Show API error page if there's a critical connection error
+  if (authError) {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+    return <ApiErrorPage error={authError} apiUrl={apiBaseUrl} />;
   }
 
   // Show login page if auth is enabled and user is not authenticated

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../api';
+import { isApiConnectionError } from '../utils/errorUtils';
 
 const AuthContext = createContext(null);
 
@@ -35,6 +36,7 @@ export function AuthProvider({ children }) {
   const checkAuth = async () => {
     try {
       setLoading(true);
+      setError(null);
       // First check if auth is enabled
       const status = await api.getAuthStatus();
       setAuthEnabled(status.enabled);
@@ -49,8 +51,15 @@ export function AuthProvider({ children }) {
       }
     } catch (err) {
       console.error('Auth check failed:', err);
-      // If auth status endpoint fails, assume auth is not required
-      setUser({ login: 'anonymous', auth_disabled: true });
+      // Check if this is a critical connection error (CORS or network)
+      if (isApiConnectionError(err)) {
+        // Critical error - can't reach API
+        setError(err);
+        setUser(null);
+      } else {
+        // Other errors - assume auth is not required and continue
+        setUser({ login: 'anonymous', auth_disabled: true });
+      }
     } finally {
       setLoading(false);
     }
