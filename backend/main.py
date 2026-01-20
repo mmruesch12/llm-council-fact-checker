@@ -3,6 +3,7 @@
 import os
 import re
 from urllib.parse import quote
+from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
@@ -309,9 +310,18 @@ async def export_conversation_endpoint(
     # Ensure filename is not empty and not too long
     if not safe_title or safe_title == '-':
         safe_title = 'conversation'
-    safe_title = safe_title[:100]  # Limit filename length
+    safe_title = safe_title[:50]  # Limit title part to 50 chars to leave room for mode and timestamp
     safe_title = safe_title.rstrip('-')  # Remove trailing hyphens after truncation
-    filename = f"{safe_title}.md"
+    
+    # Add export mode to filename for clarity
+    mode_label = mode.replace('_', '-')  # e.g., "final_only" becomes "final-only"
+    
+    # Add timestamp in YYYYMMDD-HHMMSS format for uniqueness
+    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
+    
+    # Final filename format: title_mode_timestamp.md
+    # Example: "What-is-Python_final-only_20260120-163000.md"
+    filename = f"{safe_title}_{mode_label}_{timestamp}.md"
     
     # Return as downloadable file with RFC 6266 compliant headers
     # Include both ASCII filename and UTF-8 encoded filename* for better compatibility
