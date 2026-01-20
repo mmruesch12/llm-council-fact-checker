@@ -187,7 +187,10 @@ export const api = {
    */
   async exportConversation(conversationId, mode = 'all') {
     const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}/export?mode=${encodeURIComponent(mode)}`
+      `${API_BASE}/api/conversations/${conversationId}/export?mode=${encodeURIComponent(mode)}`,
+      {
+        credentials: 'include',
+      }
     );
     if (!response.ok) {
       throw new Error('Failed to export conversation');
