@@ -44,6 +44,11 @@
   margin-bottom: var(--space-md);
 }
 
+.header-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
 .sidebar-header h1 {
   font-size: 1.25rem;
   font-weight: 700;
@@ -322,4 +327,37 @@
 
 .logout-btn:active {
   transform: scale(0.95);
+}
+
+/* Close button (mobile only, initially hidden) */
+.sidebar-close-btn {
+  width: 36px;
+  height: 36px;
+  display: none; /* Hidden by default, shown on mobile via media query */
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.sidebar-close-btn:hover {
+  background: var(--glass-highlight);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+  box-shadow: var(--shadow-glow-purple);
+}
+
+.sidebar-close-btn:active {
+  transform: scale(0.95);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .sidebar-close-btn {
+    display: flex; /* Show close button on mobile */
+  }
 }

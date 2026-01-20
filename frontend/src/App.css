@@ -23,3 +23,39 @@
   font-size: 18px;
   color: #666;
 }
+
+/* ========================================
+   Mobile Layout Responsiveness
+   ======================================== */
+
+/* Mobile: Hide sidebar by default, show with overlay */
+@media (max-width: 768px) {
+  .app {
+    position: relative;
+  }
+  
+  /* Sidebar becomes a slide-out overlay on mobile */
+  .app > .sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    bottom: 0;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .app.sidebar-open > .sidebar {
+    left: 0;
+  }
+  
+  /* Overlay backdrop when sidebar is open */
+  .app.sidebar-open::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    animation: fadeIn 0.3s ease;
+  }
+}

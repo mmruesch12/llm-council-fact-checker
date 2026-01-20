@@ -48,6 +48,7 @@ export default function ChatInterface({
   factCheckingEnabled = true,
   onFactCheckingToggle = () => {},
   onExportConversation = () => {},
+  onToggleSidebar = () => {},
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -100,6 +101,14 @@ export default function ChatInterface({
     <div className="chat-interface">
       {/* View Mode and Fact-Checking Toggles */}
       <div className="view-mode-toggle">
+        <button className="hamburger-menu" onClick={onToggleSidebar} title="Toggle sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        
         <div className="toggle-group">
           <span className="toggle-label">View Mode:</span>
           <button
