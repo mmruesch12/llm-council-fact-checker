@@ -32,6 +32,10 @@ async def query_model(
         "model": model,
         "messages": messages,
     }
+    
+    # Enable reasoning mode for Grok models
+    if "x-ai/grok" in model.lower():
+        payload["reasoning"] = {"enabled": True}
 
     start_time = time.time()
 
@@ -126,9 +130,14 @@ async def query_model_streaming(
         "messages": messages,
         "stream": True,
     }
+    
+    # Enable reasoning mode for Grok models
+    if "x-ai/grok" in model.lower():
+        payload["reasoning"] = {"enabled": True}
 
     start_time = time.time()
     full_content = ""
+    reasoning_details = None
 
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -155,6 +164,9 @@ async def query_model_streaming(
                                     full_content += chunk_text
                                     # Call the callback with chunk info
                                     await on_chunk(model, instance, chunk_text)
+                                # Capture reasoning_details if present
+                                if "reasoning_details" in delta:
+                                    reasoning_details = delta.get("reasoning_details")
                         except (json.JSONDecodeError, KeyError, IndexError):
                             pass
 
@@ -163,7 +175,7 @@ async def query_model_streaming(
 
         return {
             'content': full_content,
-            'reasoning_details': None,
+            'reasoning_details': reasoning_details,
             'response_time_ms': response_time_ms
         }
 

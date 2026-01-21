@@ -33,12 +33,16 @@ async def stage1_collect_responses(
     for item in responses:
         response = item.get('response')
         if response is not None:  # Only include successful responses
-            stage1_results.append({
+            result = {
                 "model": item['model'],
                 "instance": item['instance'],
                 "response": response.get('content', ''),
                 "response_time_ms": response.get('response_time_ms')
-            })
+            }
+            # Preserve reasoning_details if present (for Grok models)
+            if response.get('reasoning_details'):
+                result['reasoning_details'] = response.get('reasoning_details')
+            stage1_results.append(result)
 
     return stage1_results
 
@@ -804,12 +808,16 @@ async def stage1_collect_responses_streaming(
     for item in responses:
         response = item.get('response')
         if response is not None:
-            stage1_results.append({
+            result = {
                 "model": item['model'],
                 "instance": item['instance'],
                 "response": response.get('content', ''),
                 "response_time_ms": response.get('response_time_ms')
-            })
+            }
+            # Preserve reasoning_details if present (for Grok models)
+            if response.get('reasoning_details'):
+                result['reasoning_details'] = response.get('reasoning_details')
+            stage1_results.append(result)
 
     return stage1_results
 
