@@ -163,11 +163,25 @@ function App() {
     }
   };
 
+  const handleSearchConversations = async (query) => {
+    try {
+      if (query.trim()) {
+        const results = await api.searchConversations(query);
+        setConversations(results);
+      } else {
+        // If search is cleared, reload all conversations
+        await loadConversations();
+      }
+    } catch (error) {
+      console.error('Failed to search conversations:', error);
+    }
+  };
+
   const handleNewConversation = async () => {
     try {
       const newConv = await api.createConversation();
       setConversations([
-        { id: newConv.id, created_at: newConv.created_at, message_count: 0 },
+        { id: newConv.id, created_at: newConv.created_at, updated_at: newConv.updated_at, message_count: 0 },
         ...conversations,
       ]);
       setCurrentConversationId(newConv.id);
@@ -551,6 +565,7 @@ function App() {
             onChairmanChange={setChairmanModel}
             onNavigateToErrors={() => setCurrentView('errors')}
             onClose={() => setSidebarOpen(false)}
+            onSearch={handleSearchConversations}
           />
           <ChatInterface
             conversation={currentConversation}

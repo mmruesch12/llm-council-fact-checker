@@ -107,6 +107,7 @@ class ConversationMetadata(BaseModel):
     """Conversation metadata for list view."""
     id: str
     created_at: str
+    updated_at: str
     title: str
     message_count: int
 
@@ -115,6 +116,7 @@ class Conversation(BaseModel):
     """Full conversation with all messages."""
     id: str
     created_at: str
+    updated_at: str
     title: str
     messages: List[Dict[str, Any]]
 
@@ -298,10 +300,22 @@ async def synthesize_answer(
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
-async def list_conversations(user: dict = Depends(optional_auth)):
+async def list_conversations_endpoint(user: dict = Depends(optional_auth)):
     """List all conversations for the current user (metadata only)."""
     user_id = user.get("login", "anonymous")
     return storage.list_conversations(user_id)
+
+
+@app.get("/api/conversations/search", response_model=List[ConversationMetadata])
+async def search_conversations_endpoint(q: str = "", user: dict = Depends(optional_auth)):
+    """
+    Search conversations for the current user by title or message content.
+    
+    Args:
+        q: Search query string
+    """
+    user_id = user.get("login", "anonymous")
+    return storage.search_conversations(user_id, q)
 
 
 @app.post("/api/conversations", response_model=Conversation)

@@ -142,6 +142,76 @@
   transform: translateY(0);
 }
 
+/* ========================================
+   Search Container
+   ======================================== */
+
+.search-container {
+  position: relative;
+  margin-top: var(--space-md);
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px var(--space-md) 10px 38px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all var(--transition-normal);
+}
+
+.search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.search-clear-btn:hover {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+}
+
+.search-clear-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* ========================================
+   Conversation List
+   ======================================== */
+
 .conversation-list {
   flex: 1;
   overflow-y: auto;
@@ -214,16 +284,29 @@
   font-size: 12px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-xs);
 }
 
-.conversation-meta::before {
+.message-count {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.message-count::before {
   content: '';
   width: 4px;
   height: 4px;
   background: var(--accent-blue);
   border-radius: var(--radius-full);
   opacity: 0.5;
+}
+
+.conversation-timestamp {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  opacity: 0.8;
 }
 
 /* ========================================

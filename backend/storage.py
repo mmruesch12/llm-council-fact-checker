@@ -58,6 +58,23 @@ def list_conversations(user_id: str = None) -> List[Dict[str, Any]]:
     return db.list_conversations(user_id)
 
 
+def search_conversations(user_id: str = None, search_query: str = "") -> List[Dict[str, Any]]:
+    """
+    Search conversations for a user by title or message content.
+
+    Args:
+        user_id: User's identifier. If None, returns empty list.
+        search_query: Search query string
+
+    Returns:
+        List of matching conversation metadata dicts
+    """
+    if user_id is None:
+        return []
+    return db.search_conversations(user_id, search_query)
+
+
+
 def add_user_message(conversation_id: str, content: str, user_id: str = None):
     """
     Add a user message to a conversation.

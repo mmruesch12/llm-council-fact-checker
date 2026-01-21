@@ -82,6 +82,26 @@ export const api = {
   },
 
   /**
+   * Search conversations by query.
+   * @param {string} query - The search query
+   */
+  async searchConversations(query) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/search?q=${encodeURIComponent(query)}`,
+      {
+        credentials: 'include',
+      }
+    );
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
+      throw new Error('Failed to search conversations');
+    }
+    return response.json();
+  },
+
+  /**
    * Create a new conversation.
    */
   async createConversation() {
