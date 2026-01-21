@@ -244,7 +244,9 @@ def search_conversations(user_id: str, search_query: str) -> List[Dict[str, Any]
     if not search_query or not search_query.strip():
         return list_conversations(user_id)
     
-    # Escape special LIKE characters to prevent SQL injection
+    # Escape special LIKE characters to prevent pattern injection
+    # Note: The query uses parameterized statements (?) to prevent SQL injection.
+    # We only need to escape LIKE wildcards (%, _, \) to ensure they're treated as literals.
     escaped_query = search_query.strip().replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
     search_term = f"%{escaped_query}%"
     

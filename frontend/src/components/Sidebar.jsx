@@ -42,6 +42,12 @@ export default function Sidebar({
     const date = new Date(isoString);
     const now = new Date();
     const diffMs = now - date;
+    
+    // Handle negative time differences (clock skew, timezone issues)
+    if (diffMs < 0) {
+      return 'Just now';
+    }
+    
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
