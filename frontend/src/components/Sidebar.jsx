@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import './Sidebar.css';
@@ -15,9 +16,54 @@ export default function Sidebar({
   onChairmanChange,
   onNavigateToErrors,
   onClose,
+  onSearch,
 }) {
   const { theme, toggleTheme } = useTheme();
   const { user, authEnabled, isAuthenticated, logout } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    if (onSearch) {
+      onSearch(query);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    if (onSearch) {
+      onSearch('');
+    }
+  };
+
+  const formatTimestamp = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    
+    // Handle negative time differences (clock skew, timezone issues)
+    if (diffMs < 0) {
+      return 'Just now';
+    }
+    
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    // For older dates, show the date
+    const options = { month: 'short', day: 'numeric' };
+    if (date.getFullYear() !== now.getFullYear()) {
+      options.year = 'numeric';
+    }
+    return date.toLocaleDateString(undefined, options);
+  };
 
   return (
     <div className="sidebar">
@@ -61,11 +107,36 @@ export default function Sidebar({
         <button className="new-conversation-btn" onClick={onNewConversation}>
            New Conversation
         </button>
+        
+        {/* Search Input */}
+        <div className="search-container">
+          <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+          {searchQuery && (
+            <button className="search-clear-btn" onClick={handleClearSearch} title="Clear search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="conversation-list">
         {conversations.length === 0 ? (
-          <div className="no-conversations">No conversations yet</div>
+          <div className="no-conversations">
+            {searchQuery ? 'No matching conversations' : 'No conversations yet'}
+          </div>
         ) : (
           conversations.map((conv) => (
             <div
@@ -79,7 +150,10 @@ export default function Sidebar({
                 {conv.title || 'New Conversation'}
               </div>
               <div className="conversation-meta">
-                {conv.message_count} messages
+                <span className="message-count">{conv.message_count} messages</span>
+                <span className="conversation-timestamp">
+                  {formatTimestamp(conv.updated_at)}
+                </span>
               </div>
             </div>
           ))

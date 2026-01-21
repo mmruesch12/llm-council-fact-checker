@@ -222,6 +222,56 @@ def list_conversations(user_id: str) -> List[Dict[str, Any]]:
             conversations.append({
                 "id": row["id"],
                 "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "title": row["title"],
+                "message_count": row["message_count"]
+            })
+        
+        return conversations
+
+
+def search_conversations(user_id: str, search_query: str) -> List[Dict[str, Any]]:
+    """
+    Search conversations for a specific user by title or message content.
+    
+    Args:
+        user_id: User's identifier
+        search_query: Search query string
+    
+    Returns:
+        List of matching conversation metadata dicts
+    """
+    if not search_query or not search_query.strip():
+        return list_conversations(user_id)
+    
+    # Escape special LIKE characters to prevent pattern injection
+    # Note: The query uses parameterized statements (?) to prevent SQL injection.
+    # We only need to escape LIKE wildcards (%, _, \) to ensure they're treated as literals.
+    escaped_query = search_query.strip().replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    search_term = f"%{escaped_query}%"
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT c.id, c.title, c.created_at, c.updated_at,
+                   COUNT(m.id) as message_count
+            FROM conversations c
+            LEFT JOIN messages m ON c.id = m.conversation_id
+            WHERE c.user_id = ?
+              AND (c.title LIKE ? ESCAPE '\\' OR 
+                   EXISTS (SELECT 1 FROM messages m2 
+                          WHERE m2.conversation_id = c.id 
+                            AND m2.content LIKE ? ESCAPE '\\'))
+            GROUP BY c.id
+            ORDER BY c.updated_at DESC
+        """, (user_id, search_term, search_term))
+        
+        conversations = []
+        for row in cursor.fetchall():
+            conversations.append({
+                "id": row["id"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
                 "title": row["title"],
                 "message_count": row["message_count"]
             })
