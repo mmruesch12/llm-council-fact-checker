@@ -348,6 +348,35 @@
   transform: scale(0.98);
 }
 
+.manage-configs-btn {
+  width: 100%;
+  padding: 10px var(--space-md);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.manage-configs-btn:hover {
+  background: var(--glass-highlight);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+  box-shadow: var(--shadow-glow-purple);
+}
+
+.manage-configs-btn:active {
+  transform: scale(0.98);
+}
+
 /* ========================================
    User Menu
    ======================================== */

@@ -15,6 +15,7 @@ export default function Sidebar({
   onCouncilChange,
   onChairmanChange,
   onNavigateToErrors,
+  onOpenModelConfigs,
   onClose,
   onSearch,
 }) {
@@ -161,13 +162,26 @@ export default function Sidebar({
       </div>
 
       {availableModels.length > 0 && (
-        <ModelSelector
-          availableModels={availableModels}
-          councilModels={councilModels}
-          chairmanModel={chairmanModel}
-          onCouncilChange={onCouncilChange}
-          onChairmanChange={onChairmanChange}
-        />
+        <>
+          <ModelSelector
+            availableModels={availableModels}
+            councilModels={councilModels}
+            chairmanModel={chairmanModel}
+            onCouncilChange={onCouncilChange}
+            onChairmanChange={onChairmanChange}
+          />
+          {onOpenModelConfigs && (
+            <button className="manage-configs-btn" onClick={onOpenModelConfigs}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v6m0 6v6"></path>
+                <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path>
+                <path d="m19.07 4.93-4.24 4.24m-5.66 5.66-4.24 4.24"></path>
+              </svg>
+              Manage Configurations
+            </button>
+          )}
+        </>
       )}
 
       <div className="sidebar-footer">

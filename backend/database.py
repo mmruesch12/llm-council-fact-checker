@@ -75,6 +75,25 @@ def init_database():
             ON messages(conversation_id)
         """)
         
+        # Create model_configurations table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS model_configurations (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                council_models TEXT NOT NULL,
+                chairman_model TEXT NOT NULL,
+                is_default INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )
+        """)
+        
+        # Create index for model configurations
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_model_configurations_user_id 
+            ON model_configurations(user_id)
+        """)
+        
         conn.commit()
 
 
@@ -413,6 +432,241 @@ def delete_conversation(conversation_id: str, user_id: str = None) -> bool:
             cursor.execute("""
                 DELETE FROM conversations WHERE id = ?
             """, (conversation_id,))
+        
+        return cursor.rowcount > 0
+
+
+def create_model_configuration(
+    config_id: str,
+    user_id: str,
+    name: str,
+    council_models: List[str],
+    chairman_model: str,
+    is_default: bool = False
+) -> Dict[str, Any]:
+    """
+    Create a new model configuration for a user.
+    
+    Args:
+        config_id: Unique identifier for the configuration
+        user_id: User's identifier
+        name: Name for this configuration
+        council_models: List of council model IDs
+        chairman_model: Chairman model ID
+        is_default: Whether this should be the default configuration
+    
+    Returns:
+        New configuration dict
+    """
+    now = datetime.utcnow().isoformat()
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # If setting as default, unset other defaults for this user
+        if is_default:
+            cursor.execute("""
+                UPDATE model_configurations
+                SET is_default = 0
+                WHERE user_id = ?
+            """, (user_id,))
+        
+        cursor.execute("""
+            INSERT INTO model_configurations 
+            (id, user_id, name, council_models, chairman_model, is_default, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            config_id,
+            user_id,
+            name,
+            json.dumps(council_models),
+            chairman_model,
+            1 if is_default else 0,
+            now
+        ))
+    
+    return {
+        "id": config_id,
+        "user_id": user_id,
+        "name": name,
+        "council_models": council_models,
+        "chairman_model": chairman_model,
+        "is_default": is_default,
+        "created_at": now
+    }
+
+
+def list_model_configurations(user_id: str) -> List[Dict[str, Any]]:
+    """
+    List all model configurations for a specific user.
+    
+    Args:
+        user_id: User's identifier
+    
+    Returns:
+        List of configuration dicts
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, name, council_models, chairman_model, is_default, created_at
+            FROM model_configurations
+            WHERE user_id = ?
+            ORDER BY is_default DESC, created_at DESC
+        """, (user_id,))
+        
+        configurations = []
+        for row in cursor.fetchall():
+            configurations.append({
+                "id": row["id"],
+                "name": row["name"],
+                "council_models": json.loads(row["council_models"]),
+                "chairman_model": row["chairman_model"],
+                "is_default": bool(row["is_default"]),
+                "created_at": row["created_at"]
+            })
+        
+        return configurations
+
+
+def get_model_configuration(config_id: str, user_id: str = None) -> Optional[Dict[str, Any]]:
+    """
+    Get a specific model configuration.
+    
+    Args:
+        config_id: Configuration identifier
+        user_id: Optional user ID to verify ownership
+    
+    Returns:
+        Configuration dict or None if not found
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        if user_id:
+            cursor.execute("""
+                SELECT id, user_id, name, council_models, chairman_model, is_default, created_at
+                FROM model_configurations
+                WHERE id = ? AND user_id = ?
+            """, (config_id, user_id))
+        else:
+            cursor.execute("""
+                SELECT id, user_id, name, council_models, chairman_model, is_default, created_at
+                FROM model_configurations
+                WHERE id = ?
+            """, (config_id,))
+        
+        row = cursor.fetchone()
+        if not row:
+            return None
+        
+        return {
+            "id": row["id"],
+            "user_id": row["user_id"],
+            "name": row["name"],
+            "council_models": json.loads(row["council_models"]),
+            "chairman_model": row["chairman_model"],
+            "is_default": bool(row["is_default"]),
+            "created_at": row["created_at"]
+        }
+
+
+def update_model_configuration(
+    config_id: str,
+    user_id: str,
+    name: str = None,
+    council_models: List[str] = None,
+    chairman_model: str = None,
+    is_default: bool = None
+) -> bool:
+    """
+    Update a model configuration.
+    
+    Args:
+        config_id: Configuration identifier
+        user_id: User ID to verify ownership
+        name: Optional new name
+        council_models: Optional new council models list
+        chairman_model: Optional new chairman model
+        is_default: Optional new default status
+    
+    Returns:
+        True if updated, False if not found
+    """
+    # Get existing configuration
+    config = get_model_configuration(config_id, user_id)
+    if not config:
+        return False
+    
+    # Build update based on provided parameters
+    updates = []
+    values = []
+    
+    if name is not None:
+        updates.append("name = ?")
+        values.append(name)
+    
+    if council_models is not None:
+        updates.append("council_models = ?")
+        values.append(json.dumps(council_models))
+    
+    if chairman_model is not None:
+        updates.append("chairman_model = ?")
+        values.append(chairman_model)
+    
+    if is_default is not None:
+        updates.append("is_default = ?")
+        values.append(1 if is_default else 0)
+    
+    if not updates:
+        return True  # No changes requested
+    
+    values.extend([config_id, user_id])
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # If setting as default, unset other defaults for this user
+        if is_default:
+            cursor.execute("""
+                UPDATE model_configurations
+                SET is_default = 0
+                WHERE user_id = ? AND id != ?
+            """, (user_id, config_id))
+        
+        cursor.execute(f"""
+            UPDATE model_configurations
+            SET {', '.join(updates)}
+            WHERE id = ? AND user_id = ?
+        """, values)
+        
+        return cursor.rowcount > 0
+
+
+def delete_model_configuration(config_id: str, user_id: str = None) -> bool:
+    """
+    Delete a model configuration.
+    
+    Args:
+        config_id: Configuration identifier
+        user_id: Optional user ID to verify ownership
+    
+    Returns:
+        True if deleted, False if not found
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        if user_id:
+            cursor.execute("""
+                DELETE FROM model_configurations
+                WHERE id = ? AND user_id = ?
+            """, (config_id, user_id))
+        else:
+            cursor.execute("""
+                DELETE FROM model_configurations
+                WHERE id = ?
+            """, (config_id,))
         
         return cursor.rowcount > 0
 
