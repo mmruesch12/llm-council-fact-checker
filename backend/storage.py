@@ -74,7 +74,6 @@ def search_conversations(user_id: str = None, search_query: str = "") -> List[Di
     return db.search_conversations(user_id, search_query)
 
 
-
 def add_user_message(conversation_id: str, content: str, user_id: str = None):
     """
     Add a user message to a conversation.

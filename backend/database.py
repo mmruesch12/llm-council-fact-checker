@@ -244,7 +244,9 @@ def search_conversations(user_id: str, search_query: str) -> List[Dict[str, Any]
     if not search_query or not search_query.strip():
         return list_conversations(user_id)
     
-    search_term = f"%{search_query.strip()}%"
+    # Escape special LIKE characters to prevent SQL injection
+    escaped_query = search_query.strip().replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    search_term = f"%{escaped_query}%"
     
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -254,10 +256,10 @@ def search_conversations(user_id: str, search_query: str) -> List[Dict[str, Any]
             FROM conversations c
             LEFT JOIN messages m ON c.id = m.conversation_id
             WHERE c.user_id = ?
-              AND (c.title LIKE ? OR 
+              AND (c.title LIKE ? ESCAPE '\\' OR 
                    EXISTS (SELECT 1 FROM messages m2 
                           WHERE m2.conversation_id = c.id 
-                            AND m2.content LIKE ?))
+                            AND m2.content LIKE ? ESCAPE '\\'))
             GROUP BY c.id
             ORDER BY c.updated_at DESC
         """, (user_id, search_term, search_term))
