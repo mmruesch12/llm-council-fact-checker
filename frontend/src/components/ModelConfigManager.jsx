@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import './ModelConfigManager.css';
 
@@ -17,11 +17,7 @@ export default function ModelConfigManager({
   const [makeDefault, setMakeDefault] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadConfigs();
-  }, []);
-
-  const loadConfigs = async () => {
+  const loadConfigs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -32,7 +28,25 @@ export default function ModelConfigManager({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadConfigs();
+  }, [loadConfigs]);
+
+  // Add Escape key support to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !saveDialogOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, saveDialogOpen]);
 
   const handleSaveConfig = async () => {
     if (!newConfigName.trim()) {
@@ -99,7 +113,7 @@ export default function ModelConfigManager({
       <div className="modal-content model-config-manager" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Model Configurations</h2>
-          <button className="modal-close" onClick={onClose}>
+          <button className="modal-close" onClick={onClose} aria-label="Close modal">
             ×
           </button>
         </div>
@@ -195,6 +209,7 @@ export default function ModelConfigManager({
                             className="btn-set-default"
                             onClick={() => handleSetDefault(config.id)}
                             title="Set as default"
+                            aria-label="Set as default"
                           >
                             ⭐
                           </button>
@@ -203,6 +218,7 @@ export default function ModelConfigManager({
                           className="btn-delete"
                           onClick={() => handleDeleteConfig(config.id)}
                           title="Delete configuration"
+                          aria-label="Delete configuration"
                         >
                           🗑️
                         </button>

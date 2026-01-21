@@ -487,7 +487,6 @@ def create_model_configuration(
     
     return {
         "id": config_id,
-        "user_id": user_id,
         "name": name,
         "council_models": council_models,
         "chairman_model": chairman_model,
