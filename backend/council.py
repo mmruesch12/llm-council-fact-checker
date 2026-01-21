@@ -40,8 +40,9 @@ async def stage1_collect_responses(
                 "response_time_ms": response.get('response_time_ms')
             }
             # Preserve reasoning_details if present (for Grok models)
-            if response.get('reasoning_details'):
-                result['reasoning_details'] = response.get('reasoning_details')
+            reasoning_details = response.get('reasoning_details')
+            if reasoning_details:
+                result['reasoning_details'] = reasoning_details
             stage1_results.append(result)
 
     return stage1_results
@@ -815,8 +816,9 @@ async def stage1_collect_responses_streaming(
                 "response_time_ms": response.get('response_time_ms')
             }
             # Preserve reasoning_details if present (for Grok models)
-            if response.get('reasoning_details'):
-                result['reasoning_details'] = response.get('reasoning_details')
+            reasoning_details = response.get('reasoning_details')
+            if reasoning_details:
+                result['reasoning_details'] = reasoning_details
             stage1_results.append(result)
 
     return stage1_results

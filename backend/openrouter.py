@@ -7,6 +7,19 @@ from typing import List, Dict, Any, Optional, AsyncGenerator, Callable
 from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
 
 
+def is_grok_model(model: str) -> bool:
+    """
+    Check if a model is a Grok model that supports reasoning mode.
+    
+    Args:
+        model: OpenRouter model identifier
+        
+    Returns:
+        True if the model is a Grok model, False otherwise
+    """
+    return model.lower().startswith('x-ai/grok')
+
+
 async def query_model(
     model: str,
     messages: List[Dict[str, str]],
@@ -34,7 +47,7 @@ async def query_model(
     }
     
     # Enable reasoning mode for Grok models
-    if "x-ai/grok" in model.lower():
+    if is_grok_model(model):
         payload["reasoning"] = {"enabled": True}
 
     start_time = time.time()
@@ -132,7 +145,7 @@ async def query_model_streaming(
     }
     
     # Enable reasoning mode for Grok models
-    if "x-ai/grok" in model.lower():
+    if is_grok_model(model):
         payload["reasoning"] = {"enabled": True}
 
     start_time = time.time()
