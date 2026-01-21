@@ -1,3 +1,44 @@
+## Future Enhancements
+
+### Short-Term Improvements
+
+**1. Multi-Turn Conversations**
+- Include conversation history in agent context
+- Preserve reasoning chains across turns (for Grok models)
+- Allow follow-up questions that reference prior answers
+- Implementation: Extend `messages` array in `query_model()`
+
+**2. Configurable Council via UI**
+- Dynamic model selection from frontend
+- Save custom council configurations
+- Per-conversation model selection
+- Implementation: Add model selection to `/api/conversations/{id}/message`
+
+**3. Performance Analytics**
+- Track model accuracy over time
+- Identify best council compositions
+- Measure agreement/disagreement patterns
+- Implementation: Extend error catalog with analytics
+
+**4. Custom Fact-Checking Criteria**
+- Domain-specific fact-check prompts
+- Adjustable rigor levels (strict vs. lenient)
+- Custom error taxonomies per use case
+- Implementation: Parameterize fact-check prompt template
+
+### Medium-Term Enhancements
+
+**5. Web Search Integration**
+- Fact-checkers can query search engines
+- Verify claims against authoritative sources
+- Include source links in fact-check reports
+- Implementation: Tool-calling integration for fact-checkers
+
+**6. Reasoning Chain Visualization**
+- Display Grok model reasoning steps in UI
+- Interactive exploration of thinking process
+- Compare reasoning across models
+- Implementation: Render `reasoning_details` in frontend
 
 **7. Adaptive Council Composition**
 - Analyze question complexity
@@ -50,16 +91,3 @@
 - Implementation: Template-based export system
 
 ---
-
-## Best Practices Summary
-
-### Do's ✅
-
-- **Use diverse council compositions** - Mix providers, sizes, and capabilities
-- **Test prompt formats rigorously** - Agents must follow structured output
-- **Implement graceful degradation** - Continue despite individual failures
-- **Preserve transparency** - Show all agent outputs to users
-- **Optimize for parallel execution** - Use asyncio for concurrent queries
-- **Monitor aggregate metrics** - Track consensus across agents
-- **Provide clear examples** - Show exact format expected in prompts
-- **Balance cost and quality** - Use tiered approach (fast council + premium chairman)

@@ -1,3 +1,55 @@
+## Integration Patterns
+
+### External API Integration
+
+**Simplified Synthesis Endpoint** (`/api/synthesize`):
+
+```python
+import httpx
+
+# Mode 1: Fast Path (pre-provided responses)
+response = httpx.post("http://localhost:8001/api/synthesize", json={
+    "question": "What causes climate change?",
+    "responses": [
+        {"model": "gpt-5", "content": "Response 1..."},
+        {"model": "gemini-3", "content": "Response 2..."},
+    ],
+    "chairman_model": "x-ai/grok-4-fast"
+})
+
+# Mode 2: Full Council (generate responses)
+response = httpx.post("http://localhost:8001/api/synthesize", json={
+    "question": "What causes climate change?",
+    "council_models": ["model1", "model2"],
+    "chairman_model": "x-ai/grok-4-fast",
+    "fact_checking_enabled": True
+})
+```
+
+**Use Cases**:
+1. **Fact-check external LLM outputs**: Run responses through council validation
+2. **API Gateway Pattern**: Hide multi-model complexity behind single endpoint
+3. **Batch Processing**: Process many questions with council deliberation
+4. **Hybrid Systems**: Use council for critical decisions, single LLM for routine
+
+### Embedding in Applications
+
+**Example: Research Assistant**:
+```python
+async def research_question(question: str):
+    # Stage 1: Get diverse perspectives
+    perspectives = await stage1_collect_responses(question)
+    
+    # Stage 2: Fact-check all claims
+    fact_checks, label_map = await stage2_fact_check(question, perspectives)
+    
+    # Stage 3: Rank by reliability
+    rankings = await stage3_collect_rankings(question, perspectives, fact_checks, label_map)
+    
+    # Stage 4: Synthesize with citations
+    final_answer = await stage4_synthesize_final(
+        question, perspectives, fact_checks, rankings, label_map
+    )
     
     return final_answer
 ```
@@ -80,42 +132,3 @@ async def stage5_verify_citations(final_answer: str) -> Dict[str, Any]:
 ---
 
 ## Future Enhancements
-
-### Short-Term Improvements
-
-**1. Multi-Turn Conversations**
-- Include conversation history in agent context
-- Preserve reasoning chains across turns (for Grok models)
-- Allow follow-up questions that reference prior answers
-- Implementation: Extend `messages` array in `query_model()`
-
-**2. Configurable Council via UI**
-- Dynamic model selection from frontend
-- Save custom council configurations
-- Per-conversation model selection
-- Implementation: Add model selection to `/api/conversations/{id}/message`
-
-**3. Performance Analytics**
-- Track model accuracy over time
-- Identify best council compositions
-- Measure agreement/disagreement patterns
-- Implementation: Extend error catalog with analytics
-
-**4. Custom Fact-Checking Criteria**
-- Domain-specific fact-check prompts
-- Adjustable rigor levels (strict vs. lenient)
-- Custom error taxonomies per use case
-- Implementation: Parameterize fact-check prompt template
-
-### Medium-Term Enhancements
-
-**5. Web Search Integration**
-- Fact-checkers can query search engines
-- Verify claims against authoritative sources
-- Include source links in fact-check reports
-- Implementation: Tool-calling integration for fact-checkers
-
-**6. Reasoning Chain Visualization**
-- Display Grok model reasoning steps in UI
-- Interactive exploration of thinking process
-- Compare reasoning across models

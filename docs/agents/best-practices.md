@@ -1,3 +1,16 @@
+## Best Practices Summary
+
+### Do's ✅
+
+- **Use diverse council compositions** - Mix providers, sizes, and capabilities
+- **Test prompt formats rigorously** - Agents must follow structured output
+- **Implement graceful degradation** - Continue despite individual failures
+- **Preserve transparency** - Show all agent outputs to users
+- **Optimize for parallel execution** - Use asyncio for concurrent queries
+- **Monitor aggregate metrics** - Track consensus across agents
+- **Provide clear examples** - Show exact format expected in prompts
+- **Balance cost and quality** - Use tiered approach (fast council + premium chairman)
+
 ### Don'ts ❌
 
 - **Don't use only one provider** - Reduces diversity of perspectives
