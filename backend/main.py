@@ -14,6 +14,7 @@ import json
 import asyncio
 
 from . import storage
+from . import database
 from .config import (
     AVAILABLE_MODELS, COUNCIL_MODELS, CHAIRMAN_MODEL, 
     ERROR_CLASSIFICATION_ENABLED,
@@ -725,6 +726,238 @@ async def clear_errors(
     """
     error_catalog.save_catalog({"errors": []})
     return {"status": "ok", "message": "Error catalog cleared"}
+
+
+# ============================================================================
+# Model Configuration Endpoints
+# ============================================================================
+
+class CreateModelConfigRequest(BaseModel):
+    """Request to create a new model configuration."""
+    name: str = Field(..., min_length=1, max_length=100)
+    council_models: List[str] = Field(..., min_length=1, max_length=4)
+    chairman_model: str
+    is_default: bool = False
+
+
+class UpdateModelConfigRequest(BaseModel):
+    """Request to update a model configuration."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    council_models: Optional[List[str]] = Field(None, min_length=1, max_length=4)
+    chairman_model: Optional[str] = None
+    is_default: Optional[bool] = None
+
+
+class ModelConfigResponse(BaseModel):
+    """Response containing a model configuration."""
+    id: str
+    name: str
+    council_models: List[str]
+    chairman_model: str
+    is_default: bool
+    created_at: str
+
+
+@app.get("/api/model-configs", response_model=List[ModelConfigResponse])
+async def list_model_configs(
+    user: dict = Depends(optional_auth)
+):
+    """
+    List all model configurations for the current user.
+    
+    **Authentication:** Requires valid session authentication.
+    
+    Returns:
+        List of model configurations ordered by default status and creation date
+    """
+    user_id = user.get("login", "anonymous")
+    if user_id == "anonymous":
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to manage model configurations"
+        )
+    
+    configs = database.list_model_configurations(user_id)
+    return configs
+
+
+@app.post("/api/model-configs", response_model=ModelConfigResponse)
+async def create_model_config(
+    request: CreateModelConfigRequest,
+    user: dict = Depends(optional_auth)
+):
+    """
+    Create a new model configuration.
+    
+    **Authentication:** Requires valid session authentication.
+    
+    Args:
+        request: Configuration details including name, models, and default status
+    
+    Returns:
+        Created configuration
+    """
+    user_id = user.get("login", "anonymous")
+    if user_id == "anonymous":
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to manage model configurations"
+        )
+    
+    # Validate that all models exist in AVAILABLE_MODELS
+    available_model_ids = {model["id"] for model in AVAILABLE_MODELS}
+    invalid_council = [m for m in request.council_models if m not in available_model_ids]
+    if invalid_council:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid council models: {', '.join(invalid_council)}"
+        )
+    if request.chairman_model not in available_model_ids:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid chairman model: {request.chairman_model}"
+        )
+    
+    config_id = str(uuid.uuid4())
+    config = database.create_model_configuration(
+        config_id=config_id,
+        user_id=user_id,
+        name=request.name,
+        council_models=request.council_models,
+        chairman_model=request.chairman_model,
+        is_default=request.is_default
+    )
+    
+    return config
+
+
+@app.get("/api/model-configs/{config_id}", response_model=ModelConfigResponse)
+async def get_model_config(
+    config_id: str,
+    user: dict = Depends(optional_auth)
+):
+    """
+    Get a specific model configuration.
+    
+    **Authentication:** Requires valid session authentication.
+    
+    Args:
+        config_id: Configuration identifier
+    
+    Returns:
+        Configuration details
+    """
+    user_id = user.get("login", "anonymous")
+    if user_id == "anonymous":
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to manage model configurations"
+        )
+    
+    config = database.get_model_configuration(config_id, user_id)
+    if not config:
+        raise HTTPException(
+            status_code=404,
+            detail="Model configuration not found"
+        )
+    
+    return config
+
+
+@app.put("/api/model-configs/{config_id}", response_model=ModelConfigResponse)
+async def update_model_config(
+    config_id: str,
+    request: UpdateModelConfigRequest,
+    user: dict = Depends(optional_auth)
+):
+    """
+    Update a model configuration.
+    
+    **Authentication:** Requires valid session authentication.
+    
+    Args:
+        config_id: Configuration identifier
+        request: Updated configuration details
+    
+    Returns:
+        Updated configuration
+    """
+    user_id = user.get("login", "anonymous")
+    if user_id == "anonymous":
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to manage model configurations"
+        )
+    
+    # Validate models if provided
+    if request.council_models or request.chairman_model:
+        available_model_ids = {model["id"] for model in AVAILABLE_MODELS}
+        
+        if request.council_models:
+            invalid_council = [m for m in request.council_models if m not in available_model_ids]
+            if invalid_council:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid council models: {', '.join(invalid_council)}"
+                )
+        
+        if request.chairman_model and request.chairman_model not in available_model_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid chairman model: {request.chairman_model}"
+            )
+    
+    success = database.update_model_configuration(
+        config_id=config_id,
+        user_id=user_id,
+        name=request.name,
+        council_models=request.council_models,
+        chairman_model=request.chairman_model,
+        is_default=request.is_default
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="Model configuration not found"
+        )
+    
+    # Return updated configuration
+    config = database.get_model_configuration(config_id, user_id)
+    return config
+
+
+@app.delete("/api/model-configs/{config_id}")
+async def delete_model_config(
+    config_id: str,
+    user: dict = Depends(optional_auth)
+):
+    """
+    Delete a model configuration.
+    
+    **Authentication:** Requires valid session authentication.
+    
+    Args:
+        config_id: Configuration identifier
+    
+    Returns:
+        Success status
+    """
+    user_id = user.get("login", "anonymous")
+    if user_id == "anonymous":
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to manage model configurations"
+        )
+    
+    success = database.delete_model_configuration(config_id, user_id)
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="Model configuration not found"
+        )
+    
+    return {"status": "ok", "message": "Configuration deleted"}
 
 
 if __name__ == "__main__":

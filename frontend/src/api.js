@@ -306,4 +306,111 @@ export const api = {
       }
     }
   },
+
+  /**
+   * List all model configurations for the current user.
+   */
+  async listModelConfigs() {
+    const response = await fetch(`${API_BASE}/api/model-configs`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
+      throw new Error('Failed to list model configurations');
+    }
+    return response.json();
+  },
+
+  /**
+   * Create a new model configuration.
+   * @param {object} config - Configuration object with name, council_models, chairman_model, is_default
+   */
+  async createModelConfig(config) {
+    const response = await fetch(`${API_BASE}/api/model-configs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(config),
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Failed to create model configuration');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get a specific model configuration.
+   * @param {string} configId - Configuration ID
+   */
+  async getModelConfig(configId) {
+    const response = await fetch(`${API_BASE}/api/model-configs/${configId}`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
+      if (response.status === 404) {
+        throw new Error('Configuration not found');
+      }
+      throw new Error('Failed to get model configuration');
+    }
+    return response.json();
+  },
+
+  /**
+   * Update a model configuration.
+   * @param {string} configId - Configuration ID
+   * @param {object} updates - Updates object with optional name, council_models, chairman_model, is_default
+   */
+  async updateModelConfig(configId, updates) {
+    const response = await fetch(`${API_BASE}/api/model-configs/${configId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
+      if (response.status === 404) {
+        throw new Error('Configuration not found');
+      }
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Failed to update model configuration');
+    }
+    return response.json();
+  },
+
+  /**
+   * Delete a model configuration.
+   * @param {string} configId - Configuration ID
+   */
+  async deleteModelConfig(configId) {
+    const response = await fetch(`${API_BASE}/api/model-configs/${configId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized');
+      }
+      if (response.status === 404) {
+        throw new Error('Configuration not found');
+      }
+      throw new Error('Failed to delete model configuration');
+    }
+    return response.json();
+  },
 };

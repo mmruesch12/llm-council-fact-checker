@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import ErrorCatalog from './components/ErrorCatalog';
 import ExportModal from './components/ExportModal';
+import ModelConfigManager from './components/ModelConfigManager';
 import Login from './components/Login';
 import ApiErrorPage from './components/ApiErrorPage';
 import { useAuth } from './contexts/AuthContext';
@@ -48,6 +49,9 @@ function App() {
 
   // Export modal state
   const [exportModalOpen, setExportModalOpen] = useState(false);
+
+  // Model config manager modal state
+  const [modelConfigModalOpen, setModelConfigModalOpen] = useState(false);
 
   // Streaming view mode: 'grid' for streaming quadrants, 'tabs' for traditional tab view
   const [streamingViewMode, setStreamingViewMode] = useState('grid');
@@ -518,6 +522,14 @@ function App() {
     }
   };
 
+  const handleLoadConfig = (councilModels, chairmanModel) => {
+    setCouncilModels(councilModels);
+    setChairmanModel(chairmanModel);
+    // Save to localStorage
+    localStorage.setItem(STORAGE_KEYS.councilModels, JSON.stringify(councilModels));
+    localStorage.setItem(STORAGE_KEYS.chairmanModel, chairmanModel);
+  };
+
   // Show loading state while checking auth
   if (authLoading) {
     return (
@@ -564,6 +576,7 @@ function App() {
             onCouncilChange={setCouncilModels}
             onChairmanChange={setChairmanModel}
             onNavigateToErrors={() => setCurrentView('errors')}
+            onOpenModelConfigs={() => setModelConfigModalOpen(true)}
             onClose={() => setSidebarOpen(false)}
             onSearch={handleSearchConversations}
           />
@@ -584,6 +597,15 @@ function App() {
             onClose={() => setExportModalOpen(false)}
             onExport={handleExportConversation}
           />
+          {modelConfigModalOpen && (
+            <ModelConfigManager
+              availableModels={availableModels}
+              councilModels={councilModels}
+              chairmanModel={chairmanModel}
+              onLoadConfig={handleLoadConfig}
+              onClose={() => setModelConfigModalOpen(false)}
+            />
+          )}
         </>
       ) : (
         <ErrorCatalog onBack={() => setCurrentView('chat')} />
