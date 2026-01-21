@@ -735,7 +735,7 @@ async def clear_errors(
 class CreateModelConfigRequest(BaseModel):
     """Request to create a new model configuration."""
     name: str = Field(..., min_length=1, max_length=100)
-    council_models: List[str] = Field(..., min_items=1, max_items=4)
+    council_models: List[str] = Field(..., min_length=1, max_length=4)
     chairman_model: str
     is_default: bool = False
 
@@ -743,7 +743,7 @@ class CreateModelConfigRequest(BaseModel):
 class UpdateModelConfigRequest(BaseModel):
     """Request to update a model configuration."""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    council_models: Optional[List[str]] = Field(None, min_items=1, max_items=4)
+    council_models: Optional[List[str]] = Field(None, min_length=1, max_length=4)
     chairman_model: Optional[str] = None
     is_default: Optional[bool] = None
 
