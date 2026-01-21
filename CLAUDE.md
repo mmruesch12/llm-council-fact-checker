@@ -192,13 +192,66 @@ Models are hardcoded in `backend/config.py`. Chairman can be same or different f
 - Configurable council/chairman via UI instead of config file
 - Model performance analytics over time
 - Custom fact-checking criteria for different domains
-- Support for reasoning models (o1, etc.) with special handling
+- ~~Support for reasoning models (o1, etc.) with special handling~~ ✅ Implemented for Grok models
 - Web search integration for fact-checking
 - Export to PDF format (currently supports Markdown)
+
+## Reasoning Mode Support (Grok Models)
+
+As of the latest update, the system now supports **reasoning mode** for Grok models (x-ai/grok-*). This feature enables models to show their step-by-step thinking process before providing the final answer.
+
+### How It Works
+
+1. **Automatic Detection**: When a model identifier contains "x-ai/grok" (case-insensitive), the OpenRouter API request automatically includes `reasoning: {"enabled": True}`.
+
+2. **Reasoning Details Capture**: 
+   - In non-streaming mode: `reasoning_details` are extracted from the API response
+   - In streaming mode: `reasoning_details` are captured from the delta during streaming
+   - Details are preserved in the stage1 results for potential future use
+
+3. **Multi-turn Conversations**: If the application adds multi-turn conversation support in the future, `reasoning_details` should be included in the message history to allow models to continue reasoning from where they left off.
+
+### Implementation Details
+
+**Modified Files:**
+- `backend/openrouter.py`: Added reasoning parameter injection for Grok models in both `query_model()` and `query_model_streaming()`
+- `backend/council.py`: Updated `stage1_collect_responses()` and `stage1_collect_responses_streaming()` to preserve `reasoning_details` in results
+
+**Example API Payload for Grok Models:**
+```python
+{
+    "model": "x-ai/grok-4.1-fast",
+    "messages": [...],
+    "reasoning": {"enabled": True}  # Automatically added
+}
+```
+
+**Example Response Structure:**
+```python
+{
+    "content": "The final answer...",
+    "reasoning_details": [...],  # Step-by-step thinking process
+    "response_time_ms": 1234
+}
+```
+
+### Testing
+
+Use `test_grok_reasoning.py` to verify reasoning mode functionality:
+```bash
+python test_grok_reasoning.py
+```
+
+This script tests:
+1. Grok models receive the reasoning parameter
+2. Non-Grok models are unaffected
+3. `reasoning_details` are captured when available
 
 ## Testing Notes
 
 Use `test_openrouter.py` to verify API connectivity and test different model identifiers before adding to council. The script tests both streaming and non-streaming modes.
+
+Use `test_grok_reasoning.py` to verify reasoning mode is enabled for Grok models and that reasoning_details are properly captured.
 
 ## Data Flow Summary
 
