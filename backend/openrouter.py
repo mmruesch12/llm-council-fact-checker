@@ -33,6 +33,13 @@ async def query_model(
         "messages": messages,
     }
 
+    # Enable reasoning for Grok models
+    if model.startswith("x-ai/grok"):
+        payload["provider"] = {
+            "allow_fallbacks": False,
+            "require_parameters": True
+        }
+
     start_time = time.time()
 
     try:
@@ -126,6 +133,13 @@ async def query_model_streaming(
         "messages": messages,
         "stream": True,
     }
+
+    # Enable reasoning for Grok models
+    if model.startswith("x-ai/grok"):
+        payload["provider"] = {
+            "allow_fallbacks": False,
+            "require_parameters": True
+        }
 
     start_time = time.time()
     full_content = ""
