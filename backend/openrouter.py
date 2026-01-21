@@ -7,6 +7,21 @@ from typing import List, Dict, Any, Optional, AsyncGenerator, Callable
 from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
 
 
+def _add_grok_provider_params(payload: Dict[str, Any], model: str) -> None:
+    """
+    Add provider parameters to enable reasoning for Grok models.
+    
+    Args:
+        payload: The request payload to modify in-place
+        model: The model identifier
+    """
+    if model.startswith("x-ai/grok"):
+        payload["provider"] = {
+            "allow_fallbacks": False,
+            "require_parameters": True
+        }
+
+
 async def query_model(
     model: str,
     messages: List[Dict[str, str]],
@@ -34,11 +49,7 @@ async def query_model(
     }
 
     # Enable reasoning for Grok models
-    if model.startswith("x-ai/grok"):
-        payload["provider"] = {
-            "allow_fallbacks": False,
-            "require_parameters": True
-        }
+    _add_grok_provider_params(payload, model)
 
     start_time = time.time()
 
@@ -135,11 +146,7 @@ async def query_model_streaming(
     }
 
     # Enable reasoning for Grok models
-    if model.startswith("x-ai/grok"):
-        payload["provider"] = {
-            "allow_fallbacks": False,
-            "require_parameters": True
-        }
+    _add_grok_provider_params(payload, model)
 
     start_time = time.time()
     full_content = ""
